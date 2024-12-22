@@ -1,11 +1,17 @@
+import os
 from fastapi import FastAPI, HTTPException, Depends
 from sqlmodel import Session, create_engine, select
 from typing import List
 from app.models import User, Expense, Income
 from app.pydantic_models import UserCreate, UserRead, ExpenseCreate, ExpenseRead, IncomeCreate, IncomeRead
+from dotenv import load_dotenv
+load_dotenv()
 
-# Define your PostgreSQL database URL
-DATABASE_URL = 'postgresql://mcoelho:berich222@localhost/be_rich'
+POSTGRES_USER = os.environ.get('POSTGRES_USER')
+POSTGRES_DB = os.environ.get('POSTGRES_DB')
+POSTGRES_PASSWORD = os.environ.get('POSTGRES_PASSWORD')
+
+DATABASE_URL = 'postgresql://' + POSTGRES_USER + ':' + POSTGRES_PASSWORD + '@localhost/' + POSTGRES_DB
 
 # Create the database engine
 engine = create_engine(DATABASE_URL, echo=True)
