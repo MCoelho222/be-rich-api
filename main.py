@@ -1,5 +1,6 @@
 import os
 from fastapi import FastAPI, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, create_engine, select
 from typing import List
 from app.models import User, Expense, Income
@@ -10,14 +11,35 @@ load_dotenv()
 POSTGRES_USER = os.environ.get('POSTGRES_USER')
 POSTGRES_DB = os.environ.get('POSTGRES_DB')
 POSTGRES_PASSWORD = os.environ.get('POSTGRES_PASSWORD')
+# AWS_USER = os.environ.get('AWS_USER')
+# AWS_DB = os.environ.get('AWS_DB')
+# AWS_PASSWORD = os.environ.get('AWS_PASSWORD')
+# AWS_DB_URL = os.environ.get('AWS_DB_URL')
+# AWS_PORT = os.environ.get('AWS_PORT')
 
-DATABASE_URL = 'postgresql://' + POSTGRES_USER + ':' + POSTGRES_PASSWORD + '@localhost/' + POSTGRES_DB
+
+# DATABASE_URL = os.environ.get('DATABASE_URL')
+DATABASE_URL = 'postgresql://' + POSTGRES_USER + ':' + POSTGRES_PASSWORD + '@localhost:5432/' + POSTGRES_DB
 
 # Create the database engine
 engine = create_engine(DATABASE_URL, echo=True)
 
 # Initialize FastAPI with the lifespan context manager
 app = FastAPI()
+
+# Configure CORS
+origins = [
+    "http://localhost:3000",  # Your Next.js frontend URL
+    # Add other origins if needed
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,            # Allow specific origins
+    allow_credentials=True,           # Allow cookies, authorization headers
+    allow_methods=["*"],              # Allow all HTTP methods
+    allow_headers=["*"],              # Allow all headers
+)
 
 # Dependency to get a session
 def get_session():

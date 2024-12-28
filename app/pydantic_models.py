@@ -19,6 +19,7 @@ class ExpenseCreate(BaseModel):
     category: Category
     installments: int = 1
     card_owner: CardOwner
+    description: str = None
 
 class ExpenseRead(BaseModel):
     id: int
@@ -29,11 +30,13 @@ class ExpenseRead(BaseModel):
     category: Category
     installments: int
     card_owner: CardOwner
+    description: str
 
 class IncomeCreate(BaseModel):
     source: IncomeSource
     amount: float
     fixed: bool = True
+    description: str = None
 
 class IncomeRead(BaseModel):
     id: int
@@ -41,3 +44,4 @@ class IncomeRead(BaseModel):
     amount: float
     fixed: bool
     created_at: datetime
+    description: str

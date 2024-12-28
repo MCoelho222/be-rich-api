@@ -1,38 +1,7 @@
 from datetime import datetime
-from enum import Enum
 from sqlmodel import SQLModel, Field
 from typing import Optional
-
-class PaymentMethod(str, Enum):
-    NU = "NU"
-    PORTO = "PORTO"
-    PIX = "PIX"
-
-class Category(str, Enum):
-    APPS = "APPS"
-    BILLS = "BILLS"
-    CAR_REVIEW = "CAR_REVIEW"
-    CAR_TAX = "CAR_TAX"
-    CONECTCAR = "CONECTCAR"
-    EDUCATION = "EDUCATION"
-    ENTERTAINMENT = "ENTERTAINMENT"
-    FUEL = "FUEL"
-    HEALTH = "HEALTH"
-    MARKET = "MARKET"
-    PHARMACY = "PHARMACY"
-    PHONE = "PHONE"
-    OTHER = "OTHER"
-    RENT = "RENT"
-    SHOPPING = "SHOPPING"
-
-class CardOwner(str, Enum):
-    MARCELO = "MARCELO"
-    MARILIA = "MARILIA"
-
-class IncomeSource(str, Enum):
-    MARCELO = "MARCELO"
-    MARILIA = "MARILIA"
-    OTHER = "OTHER"
+from app.models_helpers import CardOwner, Category, IncomeSource, PaymentMethod
 
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -48,6 +17,7 @@ class Expense(SQLModel, table=True):
     payment_method: PaymentMethod
     category: Category
     installments: int = Field(default=1)
+    description: Optional[str] = Field(default=None)
     card_owner: CardOwner
 
 class Income(SQLModel, table=True):
@@ -56,3 +26,4 @@ class Income(SQLModel, table=True):
     amount: float
     fixed: bool = Field(default=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    description: Optional[str] = Field(default=None)
