@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlmodel import Session, select
 from typing import List
+from uuid import UUID
 from app.models.models import Entry
 from app.utils.pydantic_models import EntryCreate, EntryRead
 from app.connection_db import get_session
@@ -9,7 +10,7 @@ router = APIRouter()
 
 
 # Create Entry
-@router.post("/", response_model=EntryRead)
+@router.post("/", response_model=EntryRead, status_code=201)
 def create_entry(entry: EntryCreate, session: Session = Depends(get_session)):
     db_entry = Entry.model_validate(entry)
     session.add(db_entry)
@@ -25,9 +26,18 @@ def read_entries(session: Session = Depends(get_session)):
 
     return entries
 
+
+@router.get("/{entry_id}", response_model=EntryRead)
+def get_entry(entry_id: UUID, session: Session = Depends(get_session)):
+    entry = session.get(Entry, entry_id)
+    if not entry:
+        raise HTTPException(status_code=404, detail="Entry not found")
+    return entry
+
+
 # Update Entry
 @router.put("/{entry_id}", response_model=EntryRead)
-def update_entry(entry_id: int, entry: EntryCreate, session: Session = Depends(get_session)):
+def update_entry(entry_id: UUID, entry: EntryCreate, session: Session = Depends(get_session)):
     db_entry = session.get(Entry, entry_id)
 
     if not db_entry:
@@ -45,7 +55,7 @@ def update_entry(entry_id: int, entry: EntryCreate, session: Session = Depends(g
 
 # Delete Entry
 @router.delete("/{entry_id}")
-def delete_entry(entry_id: int, session: Session = Depends(get_session)):
+def delete_entry(entry_id: UUID, session: Session = Depends(get_session)):
     db_entry = session.get(Entry, entry_id)
 
     if not db_entry:
