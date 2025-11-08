@@ -1,10 +1,15 @@
+import os
 from logging.config import fileConfig
+from dotenv import load_dotenv
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from alembic import context
 from app.models.models import SQLModel
+
+# Load environment variables
+load_dotenv()
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -58,8 +63,14 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
+    # Override the sqlalchemy.url with environment variable if available
+    configuration = config.get_section(config.config_ini_section, {})
+    db_url = os.environ.get('DB_URL')
+    if db_url:
+        configuration['sqlalchemy.url'] = db_url
+    
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )

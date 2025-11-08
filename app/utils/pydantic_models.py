@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from datetime import datetime
 from uuid import UUID
-from app.models.models import PaymentMethod, Category, Source, EntryType
+from app.utils.models_helpers import PaymentMethod, Category, Source, EntryType
 
 class UserCreate(BaseModel):
     name: str

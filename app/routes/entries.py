@@ -8,7 +8,6 @@ from app.connection_db import get_session
 
 router = APIRouter()
 
-
 # Create Entry
 @router.post("/", response_model=EntryRead, status_code=201)
 def create_entry(entry: EntryCreate, session: Session = Depends(get_session)):
@@ -18,6 +17,7 @@ def create_entry(entry: EntryCreate, session: Session = Depends(get_session)):
     session.refresh(db_entry)
 
     return db_entry
+
 
 # Read Entries
 @router.get("/", response_model=List[EntryRead])
@@ -52,6 +52,7 @@ def update_entry(entry_id: UUID, entry: EntryCreate, session: Session = Depends(
     session.refresh(db_entry)
 
     return db_entry
+
 
 # Delete Entry
 @router.delete("/{entry_id}")

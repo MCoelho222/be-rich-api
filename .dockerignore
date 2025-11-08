@@ -1,0 +1,13 @@
+__pycache__
+.env
+.venv/
+.vscode/
+alembic/
+alembic.ini
+app/tests/
+docker-compose.yml
+*.dev
+vercel.json
+.gitignore
+LICENSE
+README.md
