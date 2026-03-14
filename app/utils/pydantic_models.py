@@ -17,9 +17,9 @@ class EntryCreate(BaseModel):
     amount: float
     entry_type: EntryType
     fixed: bool = False
-    installments: int = 1
-    payment_method: PaymentMethod
-    category: Category
+    installments: int | None = 1
+    payment_method: PaymentMethod | None = None
+    category: Category | None = None
     description: str = None
     source: Source
     created_at: datetime
@@ -29,9 +29,10 @@ class EntryRead(BaseModel):
     amount: float
     entry_type: EntryType
     fixed: bool = False
-    installments: int = 1
-    payment_method: PaymentMethod
-    category: Category
-    description: str = None
+    installments: int | None = 1
+    payment_method: PaymentMethod | None = None
+    category: Category | None = None
+    description: str | None = None
     source: Source
     created_at: datetime
+    updated_at: datetime

@@ -17,10 +17,12 @@ class Entry(SQLModel, table=True):
     amount: float
     entry_type: EntryType
     fixed: bool = Field(default=False)
-    payment_method: PaymentMethod
-    installments: int = Field(default=1)
-    category: Category
+    payment_method: Optional[PaymentMethod]
+    installments: Optional[int] = Field(default=1)
+    category: Optional[Category]
     description: Optional[str] = Field(default=None)
     source: Source
     created_at: datetime
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    
