@@ -4,9 +4,10 @@ from dotenv import load_dotenv
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
+from sqlmodel import SQLModel
 
 from alembic import context
-from app.models.Income import SQLModel
+from app.models import Expense, ExpenseFixed, Income, IncomeFixed, User
 
 # Load environment variables
 load_dotenv()
