@@ -3,8 +3,8 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlmodel import Session, select
 from typing import List
 from uuid import UUID
-from app.models.models import User
-from app.utils.pydantic_models import UserCreate, UserRead
+from app.models.User import User
+from app.utils.pydantic_user import UserCreate, UserRead
 from app.connection_db import get_session
 
 router = APIRouter()

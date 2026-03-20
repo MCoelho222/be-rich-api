@@ -8,7 +8,7 @@ from sqlalchemy.pool import StaticPool
 from sqlmodel import SQLModel, create_engine, Session
 from main import app
 
-from app.models.models import User, Entry
+from app.models.Income import User, Entry
 from app.connection_db import get_session
 from uuid import uuid4
 from datetime import datetime, timezone
