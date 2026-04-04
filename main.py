@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes.users import router as users_router
-from app.routes.incomes import router as entries_router
+from app.routes.incomes import router as incomes_router
+from app.routes.expenses import router as expenses_router
 
 app = FastAPI()
 
@@ -20,4 +21,5 @@ app.add_middleware(
 )
 
 app.include_router(users_router, prefix="/users")
-app.include_router(entries_router, prefix="/entries")
+app.include_router(incomes_router, prefix="/incomes")
+app.include_router(expenses_router, prefix="/expenses")

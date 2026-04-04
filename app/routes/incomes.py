@@ -17,6 +17,7 @@ def create_income(entry: IncomeCreate, session: Session = Depends(get_session)):
     session.add(db_entry)
     session.commit()
     session.refresh(db_entry)
+
     return db_entry
 
 
@@ -26,6 +27,7 @@ def create_income_fixed(entry: IncomeCreate, session: Session = Depends(get_sess
     session.add(db_entry)
     session.commit()
     session.refresh(db_entry)
+
     return db_entry
 
 
@@ -33,24 +35,34 @@ def create_income_fixed(entry: IncomeCreate, session: Session = Depends(get_sess
 def read_incomes_by_period(start_date: datetime | None = Query(None),
     end_date: datetime | None = Query(None), session: Session = Depends(get_session)):
     query_income = select(Income)
-    query_income_fixed = select(IncomeFixed)
     
     if start_date and end_date:
         query_income = query_income.where(and_(Income.created_at >= start_date, Income.created_at <= end_date))
-        query_income_fixed = query_income_fixed.where(and_(IncomeFixed.created_at >= start_date, IncomeFixed.created_at <= end_date))
     elif start_date:
         query_income = query_income.where(Income.created_at >= start_date)
-        query_income_fixed = query_income_fixed.where(IncomeFixed.created_at >= start_date)
     elif end_date:
         query_income = query_income.where(Income.created_at <= end_date)
-        query_income_fixed = query_income_fixed.where(IncomeFixed.created_at <= end_date)
     
     incomes = session.exec(query_income).all()
-    incomes_fixed = session.exec(query_income_fixed).all()
-    
-    all_incomes = incomes + incomes_fixed
 
-    return all_incomes
+    return incomes
+
+
+@router.get("/fixed", response_model=List[IncomeRead])
+def read_incomes_fixed_by_period(start_date: datetime | None = Query(None),
+    end_date: datetime | None = Query(None), session: Session = Depends(get_session)):
+    query_income_fixed = select(IncomeFixed)
+    
+    if start_date and end_date:
+        query_income_fixed = query_income_fixed.where(and_(IncomeFixed.created_at >= start_date, IncomeFixed.created_at <= end_date))
+    elif start_date:
+        query_income_fixed = query_income_fixed.where(IncomeFixed.created_at >= start_date)
+    elif end_date:
+        query_income_fixed = query_income_fixed.where(IncomeFixed.created_at <= end_date)
+    
+    incomes_fixed = session.exec(query_income_fixed).all()
+
+    return incomes_fixed
 
 
 @router.get("/{entry_id}", response_model=IncomeRead)

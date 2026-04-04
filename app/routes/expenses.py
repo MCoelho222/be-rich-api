@@ -17,6 +17,7 @@ def create_expense(entry: ExpenseCreate, session: Session = Depends(get_session)
     session.add(db_entry)
     session.commit()
     session.refresh(db_entry)
+
     return db_entry
 
 
@@ -26,6 +27,7 @@ def create_expense_fixed(entry: ExpenseCreate, session: Session = Depends(get_se
     session.add(db_entry)
     session.commit()
     session.refresh(db_entry)
+
     return db_entry
 
 
@@ -33,24 +35,34 @@ def create_expense_fixed(entry: ExpenseCreate, session: Session = Depends(get_se
 def get_expenses_by_period(start_date: datetime | None = Query(None),
     end_date: datetime | None = Query(None), session: Session = Depends(get_session)):
     query_expense = select(Expense)
-    query_expense_fixed = select(ExpenseFixed)
     
     if start_date and end_date:
         query_expense = query_expense.where(and_(Expense.created_at >= start_date, Expense.created_at <= end_date))
-        query_expense_fixed = query_expense_fixed.where(and_(ExpenseFixed.created_at >= start_date, ExpenseFixed.created_at <= end_date))
     elif start_date:
         query_expense = query_expense.where(Expense.created_at >= start_date)
-        query_expense_fixed = query_expense_fixed.where(ExpenseFixed.created_at >= start_date)
     elif end_date:
         query_expense = query_expense.where(Expense.created_at <= end_date)
-        query_expense_fixed = query_expense_fixed.where(ExpenseFixed.created_at <= end_date)
     
     expenses = session.exec(query_expense).all()
-    expenses_fixed = session.exec(query_expense_fixed).all()
-    
-    all_expenses = expenses + expenses_fixed
 
-    return all_expenses
+    return expenses
+
+
+@router.get("/fixed", response_model=List[ExpenseRead])
+def get_expenses_fixed_by_period(start_date: datetime | None = Query(None),
+    end_date: datetime | None = Query(None), session: Session = Depends(get_session)):
+    query_expense_fixed = select(ExpenseFixed)
+    
+    if start_date and end_date:
+        query_expense_fixed = query_expense_fixed.where(and_(ExpenseFixed.created_at >= start_date, ExpenseFixed.created_at <= end_date))
+    elif start_date:
+        query_expense_fixed = query_expense_fixed.where(ExpenseFixed.created_at >= start_date)
+    elif end_date:
+        query_expense_fixed = query_expense_fixed.where(ExpenseFixed.created_at <= end_date)
+    
+    expenses_fixed = session.exec(query_expense_fixed).all()
+
+    return expenses_fixed
 
 
 @router.get("/{entry_id}", response_model=ExpenseRead)
