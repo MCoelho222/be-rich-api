@@ -15,15 +15,16 @@ router = APIRouter()
 def create_expense(
     entry: ExpenseCreate,
     is_fixed: bool = Query(False),
+    installments: int | None = Query(None),
     session: Session = Depends(get_session)):
     model_class = ExpenseFixed if is_fixed else Expense
     db_entry = model_class.model_validate(entry)
 
-    db_entries = handle_installments_split(db_entry)
+    db_entries = handle_installments_split(db_entry, installments) if installments else [db_entry]
 
     session.add_all(db_entries)
     session.commit()
-    session.refresh(db_entries)
+    session.refresh(db_entries[0])
 
     return db_entries[0]
 

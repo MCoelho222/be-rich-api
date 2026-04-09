@@ -6,7 +6,7 @@ from app.utils.models_helpers import Source
 
 class EntryBase(BaseModel):
     amount: float
-    installments: int | None = None
+    installment: str | None = None
     description: str | None = None
     source: Source
     created_at: datetime

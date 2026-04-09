@@ -4,7 +4,7 @@ from sqlmodel import and_, Session, select
 from typing import List
 from uuid import UUID
 from app.models.Income import IncomeFixed, Income
-from app.helpers import get_entry_or_404, update_entry, delete_entry
+from app.helpers import get_entry_or_404, update_entry, delete_entry, handle_installments_split
 from app.utils.pydantic_income import IncomeCreate, IncomeRead
 from app.connection_db import get_session
 
@@ -12,14 +12,21 @@ router = APIRouter()
 
 
 @router.post("/", response_model=IncomeRead, status_code=201)
-def create_income(entry: IncomeCreate, is_fixed: bool = Query(False), session: Session = Depends(get_session)):
+def create_income(
+    entry: IncomeCreate,
+    is_fixed: bool = Query(False),
+    installments: int | None = Query(None),
+    session: Session = Depends(get_session)):
     model_class = IncomeFixed if is_fixed else Income
     db_entry = model_class.model_validate(entry)
-    session.add(db_entry)
+    
+    db_entries = handle_installments_split(db_entry, installments) if installments else [db_entry]
+    
+    session.add_all(db_entries)
     session.commit()
-    session.refresh(db_entry)
+    session.refresh(db_entries[0])
 
-    return db_entry
+    return db_entries[0]
 
 
 @router.get("/", response_model=List[IncomeRead])

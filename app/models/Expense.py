@@ -8,7 +8,7 @@ class Expense(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     amount: float
     payment_method: PaymentMethod | None
-    installments: str | None = Field(default=None)
+    installment: str | None = Field(default=None)
     category: Category | None = Field(default=None)
     description: str | None = Field(default=None)
     source: Source
@@ -20,7 +20,7 @@ class ExpenseFixed(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     amount: float
     payment_method: PaymentMethod | None
-    installments: str | None = Field(default=None)
+    installment: str | None = Field(default=None)
     category: Category | None = Field(default=None)
     description: str | None = Field(default=None)
     source: Source

@@ -7,7 +7,7 @@ from app.utils.models_helpers import Source
 class Income(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     amount: float
-    installments: str | None = Field(default=None)
+    installment: str | None = Field(default=None)
     description: str | None = Field(default=None)
     source: Source
     created_at: datetime
@@ -17,7 +17,7 @@ class Income(SQLModel, table=True):
 class IncomeFixed(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     amount: float
-    installments: str | None = Field(default=None)
+    installment: str | None = Field(default=None)
     description: str | None = Field(default=None)
     source: Source
     created_at: datetime
