@@ -144,13 +144,15 @@ def update_entry(
                 
                 session.add_all(db_entries)
                 session.commit()
-                session.refresh(db_entries[0])
+                for entry in db_entries:
+                    session.refresh(entry)
                 
                 return db_entries[0]
             else:
                 # CASE 2: NOT changing installment count - update all related installments
                 
                 # Check if created_at is being updated - need to recalculate all dates
+                updated_entries = []
                 if 'created_at' in entry_data:
                     # Parse which installment this is (e.g., "3/5" -> installment 3)
                     installment_number = int(db_entry.installment.split("/")[0])
@@ -174,30 +176,36 @@ def update_entry(
                                 setattr(related_entry, key, value)
                         
                         session.add(related_entry)
+                        updated_entries.append(related_entry)
                 else:
                     # No created_at change - just update all related installments with same values
                     for related_entry in related_entries:
                         for key, value in entry_data.items():
                             setattr(related_entry, key, value)
                         session.add(related_entry)
+                        updated_entries.append(related_entry)
                 
                 session.commit()
                 
                 # Refresh and return the original entry we were asked to update
-                session.refresh(db_entry)
-                return db_entry
+                for entry in updated_entries:
+                    session.refresh(entry)
+                # Find and return the entry that was originally requested
+                original_entry = next((e for e in updated_entries if e.id == entry_id), updated_entries[0])
+                return original_entry
     
     # Not part of an installment series
     if installments and installments > 1:
         # Create new installment series from a single entry
         for key, value in entry_data.items():
             setattr(db_entry, key, value)
-            
+        
         db_entries = handle_installments_split(db_entry, installments)
         
         session.add_all(db_entries)
         session.commit()
-        session.refresh(db_entries[0])
+        for entry in db_entries:
+            session.refresh(entry)
         
         return db_entries[0]
     

@@ -64,12 +64,6 @@ def update_expense(
     is_fixed: bool = Query(False),
     installments: int | None = Query(None),
     session: Session = Depends(get_session)):
-    print()
-    print()
-    print()
-    print()
-    print()
-    print()
     # Find the entry in either table and check if it needs migration
     db_entry, needs_migration = find_entry_in_both_tables(
         session, ExpenseFixed, Expense, entry_id, is_fixed, "Expense not found"
@@ -100,7 +94,8 @@ def update_expense(
             db_entries = handle_installments_split(new_entry, installments)
             session.add_all(db_entries)
             session.commit()
-            session.refresh(db_entries[0])
+            for entry in db_entries:
+                session.refresh(entry)
             return db_entries[0]
         else:
             session.add(new_entry)
