@@ -1,5 +1,3 @@
-version: "3.8" # Use the latest version of Docker Compose
-
 services:
   be_rich_db:
     container_name: be_rich_db
