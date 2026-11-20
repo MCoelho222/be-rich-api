@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     smtp_host: str = "localhost"
     smtp_port: int = 1025
 
+    # Exchange rates (specs/schemas.md §16, specs/operations.md §2)
+    fx_provider: Literal["frankfurter"] = "frankfurter"
+    fx_base_url: str = "https://api.frankfurter.dev/v1"
+
     @field_validator("database_url")
     @classmethod
     def _normalize(cls, value: str) -> str:

@@ -72,7 +72,7 @@ Variables are loaded from `.env`, which is **never committed** (a `.env.example`
 | `SMTP_HOST`, `SMTP_PORT` | `mailpit`, `1025` | api | Development only. |
 | `EMAIL_FROM` | `Be Rich <no-reply@example.com>` | api | |
 | `FX_PROVIDER` | `frankfurter` | api, worker | |
-| `FX_BASE_URL` | `https://api.frankfurter.app` | api, worker | Check the provider's current URL when implementing. |
+| `FX_BASE_URL` | `https://api.frankfurter.dev/v1` | api, worker | The default. The old `api.frankfurter.app` domain now answers with a redirect. |
 | `LOG_LEVEL` | `INFO` | api, worker | |
 | `NEXT_PUBLIC_API_BASE` | `/api/v1` | web | A relative path, because the UI and API share an origin. |
 
