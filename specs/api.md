@@ -281,7 +281,9 @@ The income rules are in schemas §11.
 
 - **`register_first`** creates the Recurrence and its first registered row in **one transaction**. This is the "Repeats" toggle in the entry forms (ui-behavior §6.4).
 - **`next_occurrence`** has the shape `{ occurrence_date, payment_date, status }`, or null.
-- **`change-amount`** ends the current Recurrence on `effective_date − 1 day` and creates a copy starting on `effective_date` (§12.3).
+- **`change-amount`** ends the current Recurrence on `effective_date − 1 day` and creates a copy starting on `effective_date` (§12.3). Payments already registered for occurrences on or after `effective_date` move to the copy, so they aren't shown as unpaid there. `effective_date` must be after `start_date` (otherwise edit the amount) and not after `end_date`.
+- **`status`** is computed: `ENDED` when `end_date` is before today, `PAUSED` when `is_active` is false, otherwise `ACTIVE`. The `status` query parameter filters on it.
+- **`next_occurrence`** is the first unregistered, non-skipped occurrence from the current month on. It is null for paused or ended recurrences.
 
 ### 12.3 Occurrences
 
@@ -301,6 +303,10 @@ The Occurrence shape:
 ```
 
 `occurrence_date` in a path must be a real occurrence date of that Recurrence, otherwise the API responds 404.
+
+- `GET …/occurrences` defaults to the current month and the following 11.
+- Registering a **skipped** occurrence responds 409 (undo the skip first). Skipping a **registered** occurrence also responds 409 (delete the payment first).
+- A **paused** recurrence can still have occurrences registered, since that records a payment that really happened. Its occurrences never appear in `/occurrences/overdue`, which only covers active recurrences.
 
 ---
 
