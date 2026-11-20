@@ -1,10 +1,34 @@
 """Shared schema helpers."""
 
-from typing import Annotated, Generic, TypeVar
+import re
+from decimal import Decimal
+from typing import Annotated, Any, Generic, TypeVar
 
-from pydantic import BaseModel, ConfigDict, StringConstraints
+from pydantic import BaseModel, BeforeValidator, ConfigDict, PlainSerializer, StringConstraints
+
+from app.domain.money import to_money
 
 T = TypeVar("T")
+
+_MONEY_PATTERN = re.compile(r"-?\d{1,10}(\.\d{1,2})?")
+
+
+def _parse_money(value: Any) -> Decimal:
+    """Money travels as a decimal string ("1234.50"), never a JSON number (specs/api.md §1.1)."""
+    if not isinstance(value, str):
+        raise ValueError('Must be a decimal string, e.g. "1234.50"')
+    value = value.strip()
+    if not _MONEY_PATTERN.fullmatch(value):
+        raise ValueError('Must be a decimal string with up to 2 decimal places, e.g. "1234.50"')
+    return to_money(value)
+
+
+def _format_money(value: Decimal) -> str:
+    return f"{value:.2f}"
+
+
+MoneyIn = Annotated[Decimal, BeforeValidator(_parse_money)]
+MoneyOut = Annotated[Decimal, PlainSerializer(_format_money, return_type=str)]
 
 
 def Text(max_length: int, min_length: int = 0):  # noqa: N802 - reads like a type
