@@ -89,7 +89,7 @@ Every error returns the same envelope:
 | `GET /household` | | Household | |
 | `PATCH /household` | `name`, `default_currency` | Household | |
 | `GET /household/members` | | `{ items: [{ id, name, email, is_you }] }` | Current members only. |
-| `DELETE /household/members/{user_id}` | | 204 | Removes a member (§4.2) and ends their sessions. Responds 409 `LAST_MEMBER` when needed. Removing yourself is not allowed here; use `/leave`. |
+| `DELETE /household/members/{user_id}` | | 204 | Removes a member (§4.2) and ends their sessions. Responds 409 `LAST_MEMBER` when needed. Removing yourself responds 422; use `/leave` instead. A user outside the household responds 404. |
 | `POST /household/leave` | | 200 with the `GET /auth/me` body | The caller moves to a new household (§4.2). |
 | `GET /users/{id}` | | `{ id, name, is_current_member }` | Resolves the names of **former members** that are referenced by rows (§4.2 rule 4). |
 
@@ -107,7 +107,7 @@ Changing `email` responds 409 `CONFLICT` when the new address is already registe
 | Method & path | Body | Returns |
 |---|---|---|
 | `GET /invitations` | | `{ items: [Invitation] }` with `PENDING` invitations only |
-| `POST /invitations` | `{ email }` | 201 Invitation. Responds 422 when the email already has an account (§6.1 rule 6), or 502 `EMAIL_FAILED` |
+| `POST /invitations` | `{ email }` | 201 Invitation. Responds 422 when the email already has an account (§6.1 rule 6), 409 `CONFLICT` when an invitation to that email is already pending (use resend), or 502 `EMAIL_FAILED` (the invitation is kept, so the UI can offer Resend) |
 | `POST /invitations/{id}/resend` | | 201 with the new Invitation (the old one becomes `REVOKED`) |
 | `POST /invitations/{id}/revoke` | | 204 |
 | `GET /invitations/lookup?token=` | | Public, see auth.md §4.7 |

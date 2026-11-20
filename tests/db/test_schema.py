@@ -63,7 +63,7 @@ class TestUserConstraints:
     @pytest.mark.parametrize(
         "fields,constraint",
         [
-            ({"cpf": "008528229-4"}, "ck_users_cpf_digits"),  # 11 chars, not all digits
+            ({"cpf": "123456789-0"}, "ck_users_cpf_digits"),  # 11 chars, not all digits
             ({"phone": "48999999999"}, "ck_users_phone_e164"),
             ({"address_cep": "88303575"}, "ck_users_address_complete"),  # partial address
             (
