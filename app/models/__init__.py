@@ -1,11 +1,27 @@
-from app.models.Expense import Expense, ExpenseFixed
-from app.models.Income import Income, IncomeFixed
-from app.models.User import User
+"""ORM models (specs/schemas.md and specs/auth.md §2).
+
+Importing this package registers every table on `Base.metadata`.
+"""
+
+from app.models.auth import PasswordResetToken, Session
+from app.models.entries import Expense, Income
+from app.models.household import Household, Invitation, User
+from app.models.recurrence import Recurrence
+from app.models.reference import Account, Card, Category
+from app.models.system import ExchangeRate, Holiday
 
 __all__ = [
+    "Account",
+    "Card",
+    "Category",
+    "ExchangeRate",
     "Expense",
-    "ExpenseFixed",
+    "Holiday",
+    "Household",
     "Income",
-    "IncomeFixed",
+    "Invitation",
+    "PasswordResetToken",
+    "Recurrence",
+    "Session",
     "User",
 ]
