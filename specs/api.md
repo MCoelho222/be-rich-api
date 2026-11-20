@@ -322,8 +322,8 @@ These endpoints compute the read models but never store them. All amounts are co
 |---|---|---|
 | `GET /balances` | `date` (default today), `include_archived` (default true) | The per-account `balance(a, t)` and the household total (§14). |
 | `GET /projection` | `from`, `to`, `granularity=month`, `account_id` (optional) | Per month: realized and projected income and expenses, net result, and the end-of-month balance (§13–§14). |
-| `GET /projection/items` | `from`, `to`, `account_id`, `type`, `limit`, `cursor` | The stored rows plus the projected occurrences in one list, each marked `projected: true\|false` (ui-behavior §9.4). |
-| `GET /dashboard/summary` | `from`, `to` | The values for the summary cards (ui-behavior §9.2). |
+| `GET /projection/items` | `from`, `to`, `account_id`, `type`, `limit`, `cursor` | The stored rows plus the projected occurrences in one list, each marked `projected: true\|false` (dashboard.md §4.6). |
+| `GET /dashboard/summary` | `from`, `to` | The values for the summary cards (dashboard.md §4.2–§4.3). |
 
 ## 14. Exchange rates
 
