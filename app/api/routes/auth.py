@@ -50,7 +50,8 @@ MINUTES_15, HOUR = timedelta(minutes=15), timedelta(hours=1)
 def me_body(user: User, household: Household) -> MeOut:
     return MeOut.model_validate(
         {
-            "user": {"id": user.id, "name": user.name, "email": user.email, "household_id": user.household_id},
+            "user": {"id": user.id, "name": user.name, "email": user.email, "household_id": user.household_id,
+                     "language": user.language},
             "household": {
                 "id": household.id,
                 "name": household.name,
@@ -92,6 +93,7 @@ def signup(
         invitation_token=body.invitation_token,
         now=now,
         today=today(),
+        language=body.language,
     )
     token = auth_service.create_session(db, user, now, request.headers.get("user-agent"))
     db.commit()

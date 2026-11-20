@@ -58,6 +58,19 @@ class TestSignup:
         assert "HttpOnly" not in csrf_cookie
         assert client.get("auth/me").json() == body
 
+    def test_portuguese_seed_data(self, client, db):
+        body = signup(client, language="pt").json()
+        household_id = body["user"]["household_id"]
+        assert body["user"]["language"] == "pt" and body["household"]["name"] == "Casa de Marcelo"
+        names = set(db.scalars(select(Category.name).where(Category.household_id == household_id)))
+        assert {"Aluguel", "Alimentação", "Outros"} <= names and len(names) == 25
+        assert db.scalar(
+            select(Account.name).where(Account.household_id == household_id, Account.type == AccountType.CASH)
+        ) == "Dinheiro"
+
+    def test_unknown_language(self, client):
+        assert signup(client, language="es").status_code == 422
+
     def test_password_is_hashed_with_argon2(self, client, db):
         signup(client)
         assert user_by_email(db, "marcelo@example.com").password_hash.startswith("$argon2id$")

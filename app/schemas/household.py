@@ -6,7 +6,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, EmailStr, Field
 
-from app.domain.enums import Currency, InvitationStatus
+from app.domain.enums import Currency, InvitationStatus, Language
 from app.schemas.common import OrmModel, Text
 
 
@@ -79,6 +79,7 @@ class ProfilePatch(BaseModel):
     phone: Text(30) | None = None
     address: AddressIn | None = None
     notes: Text(500) | None = None
+    language: Language | None = None
 
 
 class ProfileOut(BaseModel):
@@ -91,5 +92,6 @@ class ProfileOut(BaseModel):
     phone: str | None
     address: AddressOut | None
     notes: str | None
+    language: Language
     created_at: datetime
     updated_at: datetime

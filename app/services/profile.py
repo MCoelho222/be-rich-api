@@ -23,7 +23,7 @@ def to_out(user: User) -> ProfileOut:
         address = AddressOut(**{c: getattr(user, f"address_{c}") for c in ADDRESS_COLUMNS})
     return ProfileOut(
         id=user.id, household_id=user.household_id, name=user.name, email=user.email, cpf=user.cpf,
-        birth_date=user.birth_date, phone=user.phone, address=address, notes=user.notes,
+        birth_date=user.birth_date, phone=user.phone, address=address, notes=user.notes, language=user.language,
         created_at=user.created_at, updated_at=user.updated_at,
     )  # fmt: skip
 
@@ -35,7 +35,7 @@ def update_profile(db: Session, user: User, patch: ProfilePatch, today: date) ->
     def fail(field: str, message: str) -> None:
         errors.setdefault(field, []).append(message)
 
-    for required in ("name", "email"):
+    for required in ("name", "email", "language"):
         if required in sent and getattr(patch, required) is None:
             fail(required, "Can't be empty")
 
@@ -59,6 +59,8 @@ def update_profile(db: Session, user: User, patch: ProfilePatch, today: date) ->
 
     if "name" in sent:
         user.name = patch.name
+    if "language" in sent:
+        user.language = patch.language
     if "email" in sent:
         email = normalize_email(str(patch.email))
         if email != user.email and db.scalar(select(User.id).where(User.email == email)) is not None:

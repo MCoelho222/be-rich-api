@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session as DbSession
 
 from app.api.errors import ApiError, validation_error
 from app.core.security import hash_password, hash_token, new_token, password_problems
-from app.domain.enums import InvitationStatus
+from app.domain.enums import InvitationStatus, Language
 from app.models import Household, Invitation, PasswordResetToken, Session, User
 from app.services.households import create_household
 
@@ -60,6 +60,7 @@ def signup(
     invitation_token: str | None,
     now: datetime,
     today: date,
+    language: Language = Language.EN,
 ) -> User:
     """Create a user in a new household, or in the invitation's household (§4.1)."""
     email = normalize_email(email)
@@ -79,9 +80,11 @@ def signup(
     household_id = (
         invitation.household_id
         if invitation
-        else create_household(db, person_name=name, today=today).id
+        else create_household(db, person_name=name, today=today, language=language).id
     )
-    user = User(household_id=household_id, name=name, email=email, password_hash=hash_password(password))
+    user = User(
+        household_id=household_id, name=name, email=email, password_hash=hash_password(password), language=language
+    )
     db.add(user)
     try:
         with db.begin_nested():

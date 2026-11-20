@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, StatementError
 
 from app.db.session import get_db
-from app.domain.enums import CardType, Currency, EntryType, InvitationStatus, PaymentMethod
+from app.domain.enums import CardType, Currency, EntryType, InvitationStatus, PaymentMethod, Language
 from app.models import Account, Category, Invitation, Recurrence
 from app.services.households import DEFAULT_EXPENSE_CATEGORIES
 from main import app
@@ -42,7 +42,7 @@ class TestHouseholdSeed:
         assert household.default_currency is Currency.BRL
 
         names = db.scalars(select(Category.name).where(Category.household_id == household.id)).all()
-        assert sorted(names) == sorted(DEFAULT_EXPENSE_CATEGORIES)
+        assert sorted(names) == sorted(DEFAULT_EXPENSE_CATEGORIES[Language.EN])
         assert len(names) == 25
 
         cash = cash_account(db, household)

@@ -12,6 +12,13 @@ class PaymentMethod(StrEnum):
     BANK_TRANSFER = "BANK_TRANSFER"
 
 
+class Language(StrEnum):
+    """UI language, also used for seed data such as default category names."""
+
+    EN = "en"
+    PT = "pt"
+
+
 class Currency(StrEnum):
     BRL = "BRL"
     USD = "USD"

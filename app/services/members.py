@@ -40,7 +40,7 @@ def _move_out(db: Session, user: User, today: date) -> Household:
         .where(Card.household_id == user.household_id, Card.owner_id == user.id)
         .values(is_active=False)
     )
-    household = create_household(db, person_name=user.name, today=today)
+    household = create_household(db, person_name=user.name, today=today, language=user.language)
     user.household_id = household.id
     db.flush()
     return household

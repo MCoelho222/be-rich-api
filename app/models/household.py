@@ -7,7 +7,7 @@ from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Index, Strin
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, Timestamps, UUIDPk, str_enum
-from app.domain.enums import Currency, InvitationStatus
+from app.domain.enums import Currency, InvitationStatus, Language
 
 
 class Household(UUIDPk, Timestamps, Base):
@@ -41,6 +41,7 @@ class User(UUIDPk, Timestamps, Base):
     name: Mapped[str] = mapped_column(String(100))
     email: Mapped[str] = mapped_column(String(254), unique=True)
     password_hash: Mapped[str] = mapped_column(String(255))
+    language: Mapped[Language] = mapped_column(str_enum(Language, "language"), default=Language.EN)
     cpf: Mapped[str | None] = mapped_column(String(11), unique=True)
     birth_date: Mapped[date | None] = mapped_column(Date)
     phone: Mapped[str | None] = mapped_column(String(16))

@@ -76,8 +76,10 @@ All paths below are relative to `/api/v1`.
 `POST /auth/signup`
 
 ```json
-{ "name": "Marcelo Coelho", "email": "m@example.com", "password": "…", "invitation_token": "…optional…" }
+{ "name": "Marcelo Coelho", "email": "m@example.com", "password": "…", "language": "pt", "invitation_token": "…optional…" }
 ```
+
+`language` (`en` or `pt`, default `en`) is the language the user sees during signup. It is stored on the User (schemas §5) and picks the language of the seed data.
 
 **Without** `invitation_token`:
 

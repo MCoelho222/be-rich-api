@@ -5,7 +5,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, EmailStr, Field, StringConstraints
 
-from app.domain.enums import Currency
+from app.domain.enums import Currency, Language
 
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
 # Generous upper bound so oversized payloads never reach the password hasher;
@@ -19,6 +19,7 @@ class SignupIn(BaseModel):
     email: Annotated[EmailStr, Field(max_length=254)]
     password: RawPassword
     invitation_token: str | None = None
+    language: Language = Language.EN  # the UI sends the language the user is seeing
 
 
 class LoginIn(BaseModel):
@@ -45,6 +46,7 @@ class MeUser(BaseModel):
     name: str
     email: str
     household_id: uuid.UUID
+    language: Language
 
 
 class MeHousehold(BaseModel):

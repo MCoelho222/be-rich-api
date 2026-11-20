@@ -72,7 +72,10 @@ The group of people who share finances. It is created automatically when someone
 ### 4.1 What a new household starts with
 
 - The default expense categories (§9).
-- One `CASH` account named "Cash", with an opening balance of 0 (§7).
+- One `CASH` account named "Cash" ("Dinheiro" in Portuguese), with an opening balance of 0 (§7).
+- The name "<first name>'s household" ("Casa de <first name>" in Portuguese).
+
+All of these use the creating user's `language` (§5). Afterwards they are ordinary data that the household can rename.
 
 ### 4.2 Leaving or being removed
 
@@ -102,6 +105,7 @@ The group of people who share finances. It is created automatically when someone
 | `phone` | string(≤16) | No | | E.164 format, for example `+5548999999999`. Must be a valid number for its country. |
 | `address` | Address | No | | Embedded object, see §5.1. |
 | `notes` | string(≤500) | No | | Free text about the user. |
+| `language` | `en` \| `pt` | Yes | `en` | The UI language chosen at signup, editable on the profile. Picks the language of a new household's seed data (§4.1). |
 | `created_at` | timestamp | Yes | auto | |
 | `updated_at` | timestamp | Yes | auto | |
 
@@ -213,8 +217,9 @@ Expense and income categories share one table and are told apart by `type`. Both
 | `created_at` | timestamp | Yes | auto | |
 | `updated_at` | timestamp | Yes | auto | |
 
-**Expense categories created with each new household:**
-Food, Gasoline, Car, House, Rent, Courses, Music, Clothes, Health, Pharmacy, Gym, Kids, Trips, Transport, Entertainment, Birthdays, Gas, Electricity, Internet, AI, Storage, Phone, Business, Tax, Other.
+**Expense categories created with each new household**, in the user's language (§4.1):
+- **English:** Food, Gasoline, Car, House, Rent, Courses, Music, Clothes, Health, Pharmacy, Gym, Kids, Trips, Transport, Entertainment, Birthdays, Gas, Electricity, Internet, AI, Storage, Phone, Business, Tax, Other.
+- **Portuguese:** Alimentação, Combustível, Carro, Casa, Aluguel, Cursos, Música, Roupas, Saúde, Farmácia, Academia, Filhos, Viagens, Transporte, Lazer, Aniversários, Gás, Energia, Internet, IA, Armazenamento, Telefone, Negócios, Impostos, Outros.
 
 **Income categories created with each new household:** none. Users create them as needed.
 
