@@ -1,5 +1,6 @@
 """Credit card statement algorithm (specs/schemas.md §10.3)."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 
@@ -37,10 +38,28 @@ def statement_for_purchase(purchase: date, cycle: CardCycle) -> Statement:
         closing_year, closing_month = purchase.year, purchase.month
     else:
         closing_year, closing_month = shift_month(purchase.year, purchase.month, 1)
-    closing_date = clamp_date(closing_year, closing_month, cycle.best_buy_day)
+    return statement_closing_in(closing_year, closing_month, cycle)
 
+
+def statement_closing_in(year: int, month: int, cycle: CardCycle) -> Statement:
+    """The statement that closes in the given month."""
+    closing_date = clamp_date(year, month, cycle.best_buy_day)
     if cycle.due_day > cycle.best_buy_day:
-        due_year, due_month = closing_year, closing_month
+        due_year, due_month = year, month
     else:
-        due_year, due_month = shift_month(closing_year, closing_month, 1)
+        due_year, due_month = shift_month(year, month, 1)
     return Statement(closing_date, clamp_date(due_year, due_month, cycle.due_day))
+
+
+def next_statement(
+    today: date, cycle: CardCycle, shift: Callable[[date], date]
+) -> tuple[Statement, date]:
+    """The first statement whose due date, after `shift` (the business-day rule), is
+    today or later. Returns it with its shifted due date (api.md §13.6)."""
+    for k in range(-2, 3):
+        year, month = shift_month(today.year, today.month, k)
+        statement = statement_closing_in(year, month, cycle)
+        due = shift(statement.nominal_due_date)
+        if due >= today:
+            return statement, due
+    raise AssertionError("a statement is always due within two months")  # pragma: no cover

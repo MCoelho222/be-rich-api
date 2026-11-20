@@ -369,6 +369,8 @@ For a range entirely in the past, `realized` equals `total`. The response flag `
 - `balance` is in the account's own currency; `converted` is in `default_currency`.
 - Both are null when `date` is before the account's `opening_balance_date`. That account is left out of `total`.
 - `projected` is true when `date` is after today.
+- When no rate has ever been cached for an account's currency, its `converted` is null and its balance is listed in `unconverted` instead of being added to `total`.
+- `member_id` is ignored here (§13.1).
 
 ### 13.3 Dashboard summary
 
