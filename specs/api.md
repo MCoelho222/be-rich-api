@@ -222,6 +222,8 @@ The response is paginated: `{ items: [Expense], next_cursor }`.
 
 `POST /expenses/preview` takes **the same body** as create and returns the rows that **would** be created, with no `id`s and **nothing saved**. Validation errors are returned in the same shape as for create.
 
+The response is `{ "items": [PlannedRow, …], "converted_total": Money | null }`. A PlannedRow has `part` (the index in `parts`), the dates, `amount`, `currency`, `payment_method`, `card_id`, `account_id`, `installment_number` and `installment_total`, but no ids or group ids.
+
 The form preview (ui-behavior §6.2) uses this endpoint, so the date and rounding rules exist only on the server. If the currency is not the household default, the response also includes `converted_total`, a money object at the latest rate.
 
 ### 10.6 Update
@@ -234,7 +236,8 @@ The form preview (ui-behavior §6.2) uses this endpoint, so the date and roundin
   - with `scope=ALL` only: `transaction_date`, `payment_method`, `card_id`, `account_id`, `currency` and `installments` (§10.6). Sending one of these with another scope responds 422.
 - **With `scope=ALL`**, `amount` is the **new total**, and the series is regenerated whenever an `ALL`-only field changes.
 - **Changing payment fields on a single, non-series row** (method, card, account or currency) is also allowed. Its `payment_date` is recalculated.
-- **Response 200:** `{ "items": [Expense, …] }`, containing every affected row after the update.
+- **Purchase-level fields in a split purchase:** `spender_id`, `category_id` and `description` are applied to every row of the split purchase, whatever the scope, and so are `transaction_date` and `currency` (the other parts get their payment dates recalculated). This keeps the rule in schemas §10.5 that all parts share them.
+- **Response 200:** `{ "items": [Expense, …] }`, containing every row of the edited series, or of the whole split purchase, after the update. Row ids are kept when a series is regenerated; only added installments get new ids.
 
 ### 10.7 Delete
 

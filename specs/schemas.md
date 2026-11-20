@@ -314,7 +314,7 @@ Updating or deleting a row whose `installment_group_id` is not null requires an 
 - `payment_method`, `card_id`, `account_id`, `currency`, `installment_total` and `transaction_date` can only be changed with scope `ALL`. Such a change **regenerates** the series using the rules in §10.1–§10.3. With scope `ALL`, `amount` is read as the **new total**.
 - With `THIS` or `THIS_AND_FOLLOWING`, `amount` is the new per-row amount, and the series total changes to match.
 - Deleting a row on its own does not renumber the remaining rows.
-- When a split purchase is edited or deleted, only the targeted part changes. The other parts in the split group are not touched.
+- When a split purchase is edited or deleted, only the targeted part's amounts and payment details change. Purchase-level fields (`transaction_date`, the person, `currency`, `category_id`, `description`) are kept identical on every part, so changing them on one part changes them on all (§10.5).
 
 ---
 

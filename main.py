@@ -5,7 +5,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.api.errors import install_error_handlers
-from app.api.routes import auth, household, reference
+from app.api.routes import auth, entries, household, reference
 from app.db.session import get_db
 
 API_PREFIX = "/api/v1"
@@ -30,6 +30,8 @@ def create_app() -> FastAPI:
     app.include_router(auth.router, prefix=API_PREFIX)
     app.include_router(household.router, prefix=API_PREFIX)
     app.include_router(reference.router, prefix=API_PREFIX)
+    app.include_router(entries.expenses_router, prefix=API_PREFIX)
+    app.include_router(entries.incomes_router, prefix=API_PREFIX)
     return app
 
 
