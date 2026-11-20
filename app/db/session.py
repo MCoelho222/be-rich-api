@@ -24,4 +24,8 @@ def get_db() -> Iterator[Session]:
     """FastAPI dependency: one session per request."""
     get_engine()
     with SessionLocal() as session:
-        yield session
+        try:
+            yield session
+        except Exception:
+            session.rollback()
+            raise

@@ -27,10 +27,21 @@ class Settings(BaseSettings):
     app_url: str = "http://localhost:3000"
     log_level: str = "INFO"
 
+    # Email (specs/auth.md §7). "console" only logs; use smtp (Mailpit) in dev, resend in prod.
+    email_backend: Literal["console", "smtp", "resend"] = "console"
+    email_from: str = "Be Rich <no-reply@localhost>"
+    resend_api_key: str | None = None
+    smtp_host: str = "localhost"
+    smtp_port: int = 1025
+
     @field_validator("database_url")
     @classmethod
     def _normalize(cls, value: str) -> str:
         return normalize_database_url(value)
+
+    @property
+    def cookie_secure(self) -> bool:
+        return self.env == "production"
 
 
 @lru_cache

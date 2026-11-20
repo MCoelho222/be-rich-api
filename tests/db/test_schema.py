@@ -10,8 +10,8 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, StatementError
 
 from app.db.session import get_db
-from app.domain.enums import AccountType, CardType, Currency, EntryType, InvitationStatus, PaymentMethod
-from app.models import Account, Category, Expense, Invitation, Recurrence
+from app.domain.enums import CardType, Currency, EntryType, InvitationStatus, PaymentMethod
+from app.models import Account, Category, Invitation, Recurrence
 from app.services.households import DEFAULT_EXPENSE_CATEGORIES
 from main import app
 from tests.db.factories import (

@@ -3,7 +3,7 @@
 Importing this package registers every table on `Base.metadata`.
 """
 
-from app.models.auth import PasswordResetToken, Session
+from app.models.auth import PasswordResetToken, RateLimitHit, Session
 from app.models.entries import Expense, Income
 from app.models.household import Household, Invitation, User
 from app.models.recurrence import Recurrence
@@ -21,6 +21,7 @@ __all__ = [
     "Income",
     "Invitation",
     "PasswordResetToken",
+    "RateLimitHit",
     "Recurrence",
     "Session",
     "User",
