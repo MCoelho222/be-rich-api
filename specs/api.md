@@ -3,7 +3,7 @@
 **Scope:** this file covers the HTTP endpoints, payloads, errors and pagination.
 Entities, validation rules and business rules are defined in [schemas.md](schemas.md), and section references (§) point to that file unless stated otherwise. Authentication endpoints are defined in [auth.md](auth.md).
 
-> **Status:** the write side and the reference resources are complete. The read models in §13 are a **draft** that will be finalized while planning the dashboard.
+> **Status:** complete.
 
 ---
 
@@ -310,20 +310,192 @@ The Occurrence shape:
 
 ---
 
-## 13. Read models (DRAFT, to be finalized in dashboard planning)
+## 13. Read models
 
-These endpoints compute the read models but never store them. All amounts are converted to the household's `default_currency` (§15–§16). Every response includes:
+These endpoints compute their results on every request and never store them. They serve the dashboard (`be-rich-ui/specs/dashboard.md`) and can be used by any other view.
+
+### 13.1 Shared rules
+
+**Query parameters.** Unless an endpoint says otherwise:
+
+| Parameter | Meaning |
+|---|---|
+| `from`, `to` | Required. Inclusive date range, filtered on `payment_date` (§3). `to` must not be before `from`, and the range is at most 3 years (1,096 days); otherwise 422 `VALIDATION_ERROR`. |
+| `account_id` | Optional. Only rows and occurrences with this `account_id`, and only this account's balance. |
+| `member_id` | Optional. Only expenses with this `spender_id`, incomes with this `receiver_id`, and occurrences with this `person_id`. It never filters balances, because account money belongs to the household. A former member's ID is accepted. |
+
+An unknown `account_id` or `member_id` returns 404 (§1.2).
+
+**Conversion.** Every amount is converted to the household's `default_currency` using the rates in schemas §16.3, and summed as in schemas §15. Every response carries this block at the top level:
 
 ```json
-{ "currency": "BRL", "rates_as_of": "2026-11-19", "unconverted": [] }
+{ "currency": "BRL", "rates_as_of": "2026-11-19", "unconverted": [{ "currency": "USD", "amount": "12.00" }] }
 ```
 
-| Method & path | Query | Purpose |
+- `rates_as_of` is the date of the oldest rate used, or null when no conversion was needed.
+- `unconverted` lists, per currency, the amounts left out of every total because no rate was ever cached (schemas §16.4). It is usually empty.
+
+**What counts.** "Stored rows" are Expense and Income rows. "Projected occurrences" are the valid, unregistered, non-overdue occurrences of schemas §13.1, with their amount from the Recurrence. Overdue occurrences are never counted here; they come from `GET /occurrences/overdue` (§12.3).
+
+**Realized and total.** Amounts that can include the future are returned as a pair:
+
+- `realized`: stored rows with `payment_date` ≤ min(`to`, today);
+- `total`: every stored row in the range plus projected occurrences (schemas §13.1).
+
+For a range entirely in the past, `realized` equals `total`. The response flag `includes_projection` is true when `to` ≥ today.
+
+### 13.2 Balances
+
+`GET /balances?date=&account_id=`
+
+| Parameter | Default | Meaning |
 |---|---|---|
-| `GET /balances` | `date` (default today), `include_archived` (default true) | The per-account `balance(a, t)` and the household total (§14). |
-| `GET /projection` | `from`, `to`, `granularity=month`, `account_id` (optional) | Per month: realized and projected income and expenses, net result, and the end-of-month balance (§13–§14). |
-| `GET /projection/items` | `from`, `to`, `account_id`, `type`, `limit`, `cursor` | The stored rows plus the projected occurrences in one list, each marked `projected: true\|false` (dashboard.md §4.6). |
-| `GET /dashboard/summary` | `from`, `to` | The values for the summary cards (dashboard.md §4.2–§4.3). |
+| `date` | today | The balance at the end of this day (schemas §14.1). After today it is a projected balance. |
+| `account_id` | | Only this account. |
+| `include_archived` | `true` | Archived accounts still hold money, so they count by default. |
+
+```json
+{
+  "date": "2026-12-31", "projected": true,
+  "currency": "BRL", "rates_as_of": "2026-11-19", "unconverted": [],
+  "total": "12450.32",
+  "accounts": [
+    { "account_id": "…", "account_currency": "BRL", "balance": "1200.00", "converted": "1200.00" },
+    { "account_id": "…", "account_currency": "USD", "balance": null, "converted": null }
+  ]
+}
+```
+
+- `balance` is in the account's own currency; `converted` is in `default_currency`.
+- Both are null when `date` is before the account's `opening_balance_date`. That account is left out of `total`.
+- `projected` is true when `date` is after today.
+
+### 13.3 Dashboard summary
+
+`GET /dashboard/summary?from=&to=&account_id=&member_id=`
+
+```json
+{
+  "from": "2026-11-01", "to": "2026-11-30", "includes_projection": true,
+  "currency": "BRL", "rates_as_of": "2026-11-19", "unconverted": [],
+  "income":   { "realized": "3100.00", "total": "5400.00" },
+  "expenses": { "realized": "2650.10", "total": "4980.75" },
+  "net":      { "realized": "449.90",  "total": "419.25" },
+  "fixed_expenses": { "total": "2096.90", "share": "0.4210" }
+}
+```
+
+- `net` = `income` − `expenses`, for each of `realized` and `total` (schemas §13.3).
+- `fixed_expenses.total` is the expense rows with a `recurrence_id` plus projected expense occurrences in the range.
+- `fixed_expenses.share` = `fixed_expenses.total` ÷ `expenses.total`, as a decimal string with 4 places, or null when `expenses.total` is zero.
+
+### 13.4 Projection
+
+`GET /projection?from=&to=&account_id=&member_id=`
+
+`from` is moved back to the first day of its month and `to` forward to the last day of its month. The range is at most 36 months.
+
+```json
+{
+  "from": "2026-11-01", "to": "2027-04-30",
+  "currency": "BRL", "rates_as_of": "2026-11-19", "unconverted": [],
+  "months": [
+    {
+      "month": "2026-11",
+      "income":   { "realized": "3100.00", "scheduled": "0.00",   "projected_fixed": "2300.00", "total": "5400.00" },
+      "expenses": { "realized": "2650.10", "scheduled": "980.00", "projected_fixed": "1350.65", "total": "4980.75" },
+      "net": "419.25",
+      "end_balance": "12869.57", "end_balance_projected": true
+    }
+  ],
+  "first_negative_month": "2027-03"
+}
+```
+
+- Per month and type: `realized` is stored rows paid up to today, `scheduled` is stored rows with a later `payment_date` (installments and other future-dated rows), and `projected_fixed` is projected occurrences. `total` is their sum.
+- `end_balance` is the household total balance (§13.2) on the month's last day; with `account_id`, that account's balance. It ignores `member_id`. It is null when no included account has an opening balance by that date.
+- `end_balance_projected` is true when the month's last day is after today.
+- `first_negative_month` is the first month, from the current month on, whose `end_balance` is below zero, or null.
+
+### 13.5 Category breakdown
+
+`GET /dashboard/categories?from=&to=&type=&account_id=&member_id=`
+
+`type` is `EXPENSE` (the default) or `INCOME`.
+
+```json
+{
+  "type": "EXPENSE", "from": "2026-11-01", "to": "2026-11-30",
+  "currency": "BRL", "rates_as_of": "2026-11-19", "unconverted": [],
+  "total": "4980.75",
+  "items": [
+    { "category_id": "…", "realized": "1200.00", "total": "1850.00", "share": "0.3714" }
+  ]
+}
+```
+
+- Only categories with at least one stored row or projected occurrence in the range appear. Archived categories appear when they are used.
+- Sorted by `total` descending, then by category name.
+- `share` = the item's `total` ÷ the response `total`, with 4 decimal places.
+
+### 13.6 Card bills
+
+`GET /cards/bills?account_id=&member_id=`
+
+There are no `from`/`to` parameters: each card's **next bill** is the first statement whose due date (after the business-day shift, schemas §17) is today or later.
+
+```json
+{
+  "currency": "BRL", "rates_as_of": "2026-11-19", "unconverted": [],
+  "items": [
+    {
+      "card_id": "…", "due_date": "2026-12-07", "closes_on": "2026-11-26",
+      "rows_total": "1100.00", "projected_fixed": "140.00", "total": "1240.00", "rows_count": 7
+    }
+  ]
+}
+```
+
+- One item per active card of type `CREDIT` or `CREDIT_DEBIT`, ordered by `due_date`, then card name. A card with nothing on the bill still appears, with zero totals.
+- `rows_total` is the `CREDIT` expense rows with that `card_id` and `payment_date` = `due_date`. `projected_fixed` is the projected occurrences of `CREDIT` recurrences on that card with that payment date. `total` is their sum.
+- `closes_on` is the last purchase date that falls on this bill: the day before `best_buy_day` in the statement's closing month (schemas §10.3).
+- With `account_id`, only cards that pay from that account are included.
+
+### 13.7 Projection items
+
+`GET /projection/items?from=&to=&type=&account_id=&member_id=&order=&limit=&cursor=`
+
+The stored rows and projected occurrences of the range in one paginated list (§3). `type` is `EXPENSE`, `INCOME`, or omitted for both. `order` is `desc` (the default) or `asc`, on `payment_date`, then `created_at` (occurrences sort after stored rows on the same date), then `id` or `recurrence_id`.
+
+```json
+{
+  "currency": "BRL", "rates_as_of": "2026-11-19", "unconverted": [],
+  "items": [
+    {
+      "type": "EXPENSE", "projected": false, "payment_date": "2026-11-18",
+      "amount": "33.34", "currency": "BRL", "converted": "33.34",
+      "row": { "…": "the Expense row of §10.1" }, "occurrence": null
+    },
+    {
+      "type": "INCOME", "projected": true, "payment_date": "2026-11-28",
+      "amount": "2300.00", "currency": "BRL", "converted": "2300.00",
+      "row": null,
+      "occurrence": {
+        "recurrence_id": "…", "occurrence_date": "2026-11-28", "status": "FUTURE",
+        "description": "Salary", "category_id": "…", "account_id": "…", "card_id": null,
+        "person_id": "…", "payment_method": "PIX"
+      }
+    }
+  ],
+  "next_cursor": null
+}
+```
+
+- Exactly one of `row` and `occurrence` is set. `occurrence.status` is `PENDING` or `FUTURE`.
+- `converted` is in `default_currency`, or null when the currency has no rate (it is then counted in `unconverted`).
+- Pending occurrences whose payment date has passed are placed on today (schemas §13.1).
+
+---
 
 ## 14. Exchange rates
 
