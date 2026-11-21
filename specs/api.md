@@ -126,7 +126,7 @@ The Invitation response contains `id`, `email`, `status`, `invited_by_id`, `expi
 | `POST /accounts/{id}/unarchive` | | Account |
 | `DELETE /accounts/{id}` | | 204, or 409 `IN_USE` |
 
-Account balances are read models, see §12.
+Account balances are read models, see §13.2.
 
 ## 8. Cards
 
