@@ -207,6 +207,21 @@ class TestSessions:
         db.flush()
         assert client.get("auth/me").status_code == 401
 
+    def test_stale_session_cookie_is_cleared(self, client, db):
+        # e.g. the session was deleted or the database was reset: the 401 also clears the
+        # cookies, so the UI's route guard stops treating the browser as logged in.
+        client.cookies.set("brs_session", "no-such-session")
+        client.cookies.set("brs_csrf", "stale")
+        response = client.get("auth/me")
+        assert response.status_code == 401
+        cleared = response.headers.get_list("set-cookie")
+        assert any(c.startswith('brs_session=""') or c.startswith("brs_session=;") for c in cleared), cleared
+        assert any(c.startswith("brs_csrf=") and "Max-Age=0" in c for c in cleared), cleared
+
+    def test_no_cookie_no_set_cookie(self, client):
+        response = client.get("auth/me")
+        assert response.status_code == 401 and "set-cookie" not in response.headers
+
     def test_activity_slides_the_idle_expiry(self, client, db):
         user_id = signup(client).json()["user"]["id"]
         session = db.scalar(select(Session).where(Session.user_id == user_id))

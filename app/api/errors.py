@@ -81,8 +81,16 @@ def _clean_message(message: str) -> str:
 
 def install_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(ApiError)
-    async def _api_error(_: Request, exc: ApiError) -> JSONResponse:
-        return error_response(exc.status, exc.code, exc.message, exc.fields, exc.headers, exc.extra)
+    async def _api_error(request: Request, exc: ApiError) -> JSONResponse:
+        response = error_response(exc.status, exc.code, exc.message, exc.fields, exc.headers, exc.extra)
+        if exc.code == "UNAUTHENTICATED":
+            # A session cookie that no longer resolves (expired, revoked, or its database was
+            # reset) is cleared, so the UI's route guard stops treating the browser as logged in.
+            from app.api.deps import SESSION_COOKIE, clear_auth_cookies  # deps imports this module
+
+            if SESSION_COOKIE in request.cookies:
+                clear_auth_cookies(response)
+        return response
 
     @app.exception_handler(RequestValidationError)
     async def _validation(_: Request, exc: RequestValidationError) -> JSONResponse:
