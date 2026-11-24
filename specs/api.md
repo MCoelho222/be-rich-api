@@ -273,16 +273,16 @@ The income rules are in schemas §11.
 | `POST /recurrences` | The Recurrence fields (schemas §12), plus an optional `register_first: { occurrence_date, transaction_date?, amount?, description? }` | 201 `{ recurrence, registered: Expense \| Income \| null }` |
 | `PATCH /recurrences/{id}` | Any field except `type` | Recurrence. Only affects unregistered occurrences (§12.3). |
 | `POST /recurrences/{id}/pause` and `/resume` | | Recurrence |
-| `POST /recurrences/{id}/end` | `{ end_date }` (default today) | Recurrence |
+| `POST /recurrences/{id}/end` | `{ end_date }` (default today) | Recurrence. If a payment is registered for a later occurrence, the end moves to that occurrence. Responds 422 on `end_date` if the end is still before `start_date` (it hasn't started and has no payments: delete it instead). |
 | `POST /recurrences/{id}/change-amount` | `{ effective_date, amount }` | `{ ended: Recurrence, created: Recurrence }` |
-| `DELETE /recurrences/{id}` | | 204, or 409 `IN_USE` when it has registered rows |
+| `DELETE /recurrences/{id}` | Query `payments`: `delete` or `keep` | 204. With registered rows and no `payments`, 409 `IN_USE` with their count in `usage`. `delete` removes those rows too; `keep` unlinks them (`recurrence_id` and `occurrence_date` become null) so they stay as regular entries. Balances and reports follow either way, since they're computed from the rows. |
 
 ### 12.2 Details
 
 - **`register_first`** creates the Recurrence and its first registered row in **one transaction**. This is the "Repeats" toggle in the entry forms (ui-behavior §6.4). `transaction_date` defaults as in the register endpoint (§12.3).
 - **`next_occurrence`** has the shape `{ occurrence_date, payment_date, status }`, or null.
 - **`change-amount`** ends the current Recurrence on `effective_date − 1 day` and creates a copy starting on `effective_date` (§12.3). Payments already registered for occurrences on or after `effective_date` move to the copy, so they aren't shown as unpaid there. `effective_date` must be after `start_date` (otherwise edit the amount) and not after `end_date`.
-- **`status`** is computed: `ENDED` when `end_date` is before today, `PAUSED` when `is_active` is false, otherwise `ACTIVE`. The `status` query parameter filters on it.
+- **`status`** is computed: `ENDED` when `end_date` is set and nothing is left to come: `end_date` is today or earlier, or every occurrence after today up to `end_date` is registered or skipped. Otherwise `PAUSED` when `is_active` is false, else `ACTIVE`. The `status` query parameter filters on it.
 - **`next_occurrence`** is the first unregistered, non-skipped occurrence from the current month on. It is null for paused or ended recurrences.
 
 ### 12.3 Occurrences

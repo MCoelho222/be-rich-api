@@ -10,6 +10,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 
+from sqlalchemy import delete as sa_delete
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
@@ -33,9 +34,16 @@ def kind_of(entry_type: EntryType) -> Kind:
     return EXPENSE if entry_type is EntryType.EXPENSE else INCOME
 
 
-def status_of(rec: Recurrence, today: date) -> str:
-    if rec.end_date is not None and rec.end_date < today:
-        return "ENDED"
+def status_of(db: Session, rec: Recurrence, today: date) -> str:
+    """ENDED once it has an end date and nothing is left to come after today: no occurrence
+    after today up to end_date, other than registered or skipped ones (api.md §12.2)."""
+    if rec.end_date is not None:
+        if rec.end_date <= today:
+            return "ENDED"
+        done = set(registered_rows(db, rec)) | set(rec.skipped_dates or ())
+        remaining = occurrence_dates(rule_of(rec), today + timedelta(days=1), rec.end_date)
+        if all(d in done for d in remaining):
+            return "ENDED"
     return "ACTIVE" if rec.is_active else "PAUSED"
 
 
@@ -118,7 +126,7 @@ def occurrences(db: Session, rec: Recurrence, start: date, end: date, today: dat
 
 def next_occurrence(db: Session, rec: Recurrence, today: date) -> Occurrence | None:
     """First unregistered, non-skipped occurrence from the current month on (active only)."""
-    if status_of(rec, today) != "ACTIVE":
+    if status_of(db, rec, today) != "ACTIVE":
         return None
     start = today.replace(day=1)
     for horizon in (13, 37):  # months; yearly recurrences may need the longer window
@@ -278,8 +286,13 @@ def follow_card_due_day(db: Session, card: Card, old_due_day: int) -> None:
 
 
 def end(db: Session, rec: Recurrence, end_date: date) -> None:
+    """Stop future occurrences. Registered payments stay valid occurrences, so the end moves
+    to the last registered one when it is later (a bill paid ahead, for example)."""
+    end_date = max([end_date, *registered_rows(db, rec)])
     if end_date < rec.start_date:
-        raise validation_error({"end_date": ["Must be on or after start_date"]})
+        raise validation_error(
+            {"end_date": ["This fixed entry hasn't started yet and has no payments. Delete it instead."]}
+        )
     rec.end_date = end_date
     db.flush()
 
@@ -320,13 +333,21 @@ def change_amount(db: Session, rec: Recurrence, effective: date, amount: Decimal
     return new
 
 
-def delete(db: Session, rec: Recurrence) -> None:
+def delete(db: Session, rec: Recurrence, payments: str | None = None) -> None:
+    """Delete the template. With registered payments the caller chooses what happens to them:
+    `delete` removes them too, `keep` turns them into regular entries. Without a choice it
+    answers IN_USE with the count. Balances and reports are computed from the rows, so they
+    follow either way."""
     model = kind_of(rec.type).model
     count = db.scalar(select(func.count()).select_from(model).where(model.recurrence_id == rec.id))
-    if count:
+    if count and payments == "delete":
+        db.execute(sa_delete(model).where(model.recurrence_id == rec.id))
+    elif count and payments == "keep":
+        db.execute(update(model).where(model.recurrence_id == rec.id).values(recurrence_id=None, occurrence_date=None))
+    elif count:
         key = "expenses" if rec.type is EntryType.EXPENSE else "incomes"
         raise ApiError(
-            409, "IN_USE", f"This fixed entry has {count} registered payment(s). End or pause it instead.",
+            409, "IN_USE", f"This fixed entry has {count} registered payment(s). Choose whether to delete them or keep them as regular entries.",
             extra={"usage": {"expenses": 0, "incomes": 0, key: count}},
         )  # fmt: skip
     db.delete(rec)

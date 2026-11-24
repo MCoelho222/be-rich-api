@@ -414,7 +414,8 @@ A Recurrence is a **fixed expense or income** (rent, salary, subscriptions) that
 
 - Editing a Recurrence affects **only unregistered occurrences**. Registered rows are never modified.
 - To change the amount from a given date onward while keeping history accurate, the user ends the current Recurrence (`end_date`) and creates a new one. The UI offers this as a single action (see §8 of `be-rich-ui/specs/ui-behavior.md` in the UI repository).
-- Deleting a Recurrence that has registered rows is not allowed. Set `end_date` or `is_active = false` instead (§18).
+- Deleting a Recurrence that has registered rows asks what happens to them: they are deleted too, or kept as regular entries, unlinked from it (§18).
+- Ending a Recurrence never drops a registered occurrence: if one is later than the chosen `end_date`, the end moves to it.
 
 ---
 
@@ -563,7 +564,7 @@ It does **not** apply to the other payment methods, because their payment date i
 - **The last active `CASH` account** cannot be archived.
 - **Archived cards, accounts and categories in recurrences:** a Recurrence that uses one of these still projects. However, its occurrence cannot be registered until the reference is replaced or reactivated, and the UI flags it.
 - **Users are never deleted** as part of household operations. Leaving or being removed moves them to their own household (§4.2).
-- **Recurrences:** a Recurrence with registered rows can only be ended (`end_date`) or paused (`is_active = false`). A Recurrence without registered rows can be hard-deleted.
+- **Recurrences:** a Recurrence can be hard-deleted. Its registered rows are either deleted with it or kept as regular rows (`recurrence_id` and `occurrence_date` set to null); the caller chooses (api.md §12). It can also be ended (`end_date`) or paused (`is_active = false`).
 - **Expenses and incomes** are hard-deleted, following the scope rules in §10.6. Deleting a row registered from a Recurrence turns that occurrence back into unregistered.
 - **Household isolation:** every query is scoped to the caller's current household. New cross-household references are rejected.
 

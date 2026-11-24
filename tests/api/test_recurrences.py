@@ -28,7 +28,7 @@ def setup(client):
     categories = {c["name"]: c["id"] for c in client.get("categories", params={"type": "EXPENSE"}).json()["items"]}
     salary = post(client, "categories", {"type": "INCOME", "name": "Salary"}).json()
     return {"owner": owner, "bank": bank["id"], "card": card["id"], "rent": categories["Rent"],
-            "gym": categories["Gym"], "salary": salary["id"]}  # fmt: skip
+            "gym": categories["Gym"], "food": categories["Food"], "salary": salary["id"]}  # fmt: skip
 
 
 def rent(client, setup, **extra):
@@ -186,6 +186,28 @@ class TestLifecycle:
         assert (ended["status"], ended["end_date"], ended["next_occurrence"]) == ("ENDED", "2026-10-31", None)
         assert post(client, f"recurrences/{rec['id']}/end", {"end_date": "2026-01-01"}).status_code == 422
 
+    def test_ended_today_or_with_nothing_left_to_come(self, client, setup):
+        rec = rent(client, setup)["recurrence"]
+        assert post(client, f"recurrences/{rec['id']}/end", {"end_date": "2026-11-20"}).json()["status"] == "ENDED"
+        # Ending on Dec 1: no occurrence left after today (the next is Dec 5)
+        other = rent(client, setup, category_id=setup["gym"])["recurrence"]
+        assert post(client, f"recurrences/{other['id']}/end", {"end_date": "2026-12-01"}).json()["status"] == "ENDED"
+        # Ending on Dec 31: Dec 5 is still to come
+        third = rent(client, setup, category_id=setup["food"])["recurrence"]
+        assert post(client, f"recurrences/{third['id']}/end", {"end_date": "2026-12-31"}).json()["status"] == "ACTIVE"
+
+    def test_end_keeps_payments_registered_ahead(self, client, setup):
+        # A credit card fixed expense whose first bill (Dec 5) was already registered
+        rec = rent(client, setup, payment_method="CREDIT", card_id=setup["card"], start_date="2026-12-05",
+                   category_id=setup["gym"], amount="120.00",
+                   register_first={"occurrence_date": "2026-12-05", "transaction_date": "2026-11-10"})["recurrence"]  # fmt: skip
+        ended = post(client, f"recurrences/{rec['id']}/end", {"end_date": "2026-11-20"}).json()
+        assert (ended["end_date"], ended["status"]) == ("2026-12-05", "ENDED")
+        # Not started and nothing paid: ending is refused, deleting is the way
+        unpaid = rent(client, setup, start_date="2026-12-05", category_id=setup["food"])["recurrence"]
+        response = post(client, f"recurrences/{unpaid['id']}/end", {"end_date": "2026-11-20"})
+        assert "Delete it instead" in response.json()["error"]["fields"]["end_date"][0]
+
     def test_list_filters(self, client, setup):
         rent(client, setup)
         ended = rent(client, setup, category_id=setup["gym"], end_date="2026-10-31")["recurrence"]
@@ -230,6 +252,19 @@ class TestLifecycle:
         assert response.status_code == 409 and response.json()["error"]["usage"]["expenses"] == 1
         unused = rent(client, setup, category_id=setup["gym"])["recurrence"]
         assert client.delete(f"recurrences/{unused['id']}", headers=csrf(client)).status_code == 204
+
+    def test_delete_with_payments(self, client, setup):
+        rec = rent(client, setup)["recurrence"]
+        row = post(client, f"recurrences/{rec['id']}/occurrences/2026-11-05/register").json()
+        assert client.delete(f"recurrences/{rec['id']}", params={"payments": "keep"}, headers=csrf(client)).status_code == 204
+        kept = client.get(f"expenses/{row['id']}").json()
+        assert (kept["recurrence_id"], kept["occurrence_date"], kept["amount"]) == (None, None, "1800.00")
+
+        rec = rent(client, setup, category_id=setup["gym"])["recurrence"]
+        row = post(client, f"recurrences/{rec['id']}/occurrences/2026-11-05/register").json()
+        assert client.delete(f"recurrences/{rec['id']}", params={"payments": "delete"}, headers=csrf(client)).status_code == 204
+        assert client.get(f"expenses/{row['id']}").status_code == 404
+        assert client.get(f"recurrences/{rec['id']}").status_code == 404
 
     def test_other_household_is_not_found(self, client, setup):
         rec = rent(client, setup)["recurrence"]

@@ -40,7 +40,7 @@ def to_out(db: Session, rec: Recurrence, now: date) -> RecurrenceOut:
     out = RecurrenceOut.model_validate(
         {
             **{c.key: getattr(rec, c.key) for c in Recurrence.__mapper__.column_attrs},
-            "status": svc.status_of(rec, now),
+            "status": svc.status_of(db, rec, now),
             "next_occurrence": NextOccurrence(occurrence_date=nxt.occurrence_date, payment_date=nxt.payment_date,
                                               status=nxt.status) if nxt else None,  # fmt: skip
         }
@@ -73,7 +73,7 @@ def list_recurrences(
         stmt = stmt.where(Recurrence.type == type)
     recs = db.scalars(stmt.order_by(Recurrence.type, Recurrence.day_of_month, Recurrence.created_at)).all()
     wanted = None if status_ == "all" else status_.upper()
-    return Items(items=[to_out(db, r, now) for r in recs if wanted is None or svc.status_of(r, now) == wanted])
+    return Items(items=[to_out(db, r, now) for r in recs if wanted is None or svc.status_of(db, r, now) == wanted])
 
 
 @router.get("/recurrences/{recurrence_id}", response_model=RecurrenceOut)
@@ -156,8 +156,13 @@ def change_amount(
 
 
 @router.delete("/recurrences/{recurrence_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_recurrence(recurrence_id: uuid.UUID, current: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
-    svc.delete(db, svc.get(db, current.household.id, recurrence_id))
+def delete_recurrence(
+    recurrence_id: uuid.UUID,
+    payments: Literal["delete", "keep"] | None = None,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    svc.delete(db, svc.get(db, current.household.id, recurrence_id), payments)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
