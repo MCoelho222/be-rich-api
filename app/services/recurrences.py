@@ -14,8 +14,9 @@ from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.api.errors import ApiError, validation_error
-from app.domain.credit import CardCycle
-from app.domain.dates import add_months
+from app.domain.business_days import next_business_day
+from app.domain.credit import CardCycle, purchase_window, statement_due_in
+from app.domain.dates import add_months, clamp_date
 from app.domain.enums import CARD_METHODS, EntryType, OccurrenceStatus, PaymentMethod
 from app.domain.payments import payment_dates
 from app.domain.recurrence import RecurrenceRule, occurrence_dates, occurrence_status
@@ -36,6 +37,11 @@ def status_of(rec: Recurrence, today: date) -> str:
     if rec.end_date is not None and rec.end_date < today:
         return "ENDED"
     return "ACTIVE" if rec.is_active else "PAUSED"
+
+
+def is_card_bill(rec: Recurrence) -> bool:
+    """A credit card fixed expense: its occurrences are the card's due dates (§12.1)."""
+    return rec.type is EntryType.EXPENSE and rec.payment_method is PaymentMethod.CREDIT and rec.card_id is not None
 
 
 def rule_of(rec: Recurrence) -> RecurrenceRule:
@@ -70,6 +76,10 @@ class OccurrenceCalculator:
         self.holidays = load_holidays(db, first_year, last_year + 1)
 
     def payment_date(self, occurrence: date) -> date:
+        if self.cycle is not None and self.kind.has_card:
+            # A credit card fixed expense occurs on the card's due dates (§12.1): it is paid
+            # with the statement due that day, moved to the next business day.
+            return next_business_day(occurrence, self.holidays)
         return payment_dates(
             self.kind.entry_type, self.rec.payment_method, occurrence, 1, self.holidays, self.cycle
         )[0]
@@ -187,7 +197,11 @@ def create(db: Session, household: Household, caller: User, body: Any, today: da
         currency=body.currency or household.default_currency, payment_method=body.payment_method,
         card_id=payment.card.id if payment.card else None, account_id=payment.account.id,
         category_id=body.category_id, description=blank_to_none(body.description),
-        interval_months=body.interval_months, day_of_month=body.day_of_month or start.day,
+        interval_months=body.interval_months,
+        day_of_month=(
+            payment.card.due_day if payment.card and body.payment_method is PaymentMethod.CREDIT and kind.has_card
+            else body.day_of_month or start.day
+        ),
         start_date=start, end_date=body.end_date, skipped_dates=[], is_active=True, created_by_id=caller.id,
     )  # fmt: skip
     db.add(rec)
@@ -231,6 +245,35 @@ def update_recurrence(db: Session, rec: Recurrence, changes: dict[str, Any]) -> 
     if payment is not None:
         rec.card_id = payment.card.id if payment.card else None
         rec.account_id = payment.account.id
+    if is_card_bill(rec):
+        card = db.get(Card, rec.card_id)
+        assert card is not None
+        rec.day_of_month = card.due_day  # credit card fixed expenses follow the card's due day
+    db.flush()
+
+
+def follow_card_due_day(db: Session, card: Card, old_due_day: int) -> None:
+    """After a card's due_day changes, its credit fixed expenses move to the new day. Registered
+    payments and skips keep pointing at the same month's occurrence (schemas §10.4, §12.1)."""
+    if card.due_day == old_due_day:
+        return
+    recs = db.scalars(
+        select(Recurrence).where(
+            Recurrence.card_id == card.id,
+            Recurrence.type == EntryType.EXPENSE,
+            Recurrence.payment_method == PaymentMethod.CREDIT,
+        )
+    ).all()
+    def move(d: date) -> date:
+        return clamp_date(d.year, d.month, card.due_day)
+
+    for rec in recs:
+        rec.day_of_month = card.due_day
+        rec.start_date = rec.start_date.replace(day=1)
+        rec.skipped_dates = sorted({move(d) for d in rec.skipped_dates or ()})
+        model = kind_of(rec.type).model
+        for row in db.scalars(select(model).where(model.recurrence_id == rec.id)):
+            row.occurrence_date = move(row.occurrence_date)
     db.flush()
 
 
@@ -294,7 +337,8 @@ def delete(db: Session, rec: Recurrence) -> None:
 
 
 def register(
-    db: Session, household: Household, caller: User, rec: Recurrence, occurrence: date, overrides: dict[str, Any]
+    db: Session, household: Household, caller: User, rec: Recurrence, occurrence: date, overrides: dict[str, Any],
+    today: date,
 ):
     """Create the Expense/Income row for an occurrence (§12.2)."""
     _require_occurrence(rec, occurrence)
@@ -320,7 +364,7 @@ def register(
     if errors:
         raise validation_error(errors)
 
-    transaction_date = overrides.get("transaction_date") or occurrence
+    transaction_date = overrides.get("transaction_date") or default_purchase_date(rec, payment, occurrence, today)
     planned = entries._plan(kind, payment, transaction_date, amount, entries._holidays_for(db, transaction_date))[0]
     description = overrides["description"] if "description" in overrides else rec.description
     row = entries._new_row(
@@ -334,6 +378,17 @@ def register(
     db.add(row)
     db.flush()
     return row
+
+
+def default_purchase_date(rec: Recurrence, payment: entries.Payment, occurrence: date, today: date) -> date:
+    """The transaction date of a registered occurrence when the client sends none. For a credit
+    card fixed expense it is a purchase date inside the statement due on the occurrence date:
+    today while that statement is open, otherwise the statement's nearest day."""
+    if not (is_card_bill(rec) and payment.card is not None):
+        return occurrence
+    cycle = CardCycle(payment.card.best_buy_day, payment.card.due_day)
+    first, last = purchase_window(statement_due_in(occurrence.year, occurrence.month, cycle), cycle)
+    return max(first, min(today, last))
 
 
 def skip(db: Session, rec: Recurrence, occurrence: date) -> None:

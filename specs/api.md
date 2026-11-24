@@ -270,7 +270,7 @@ The income rules are in schemas §11.
 |---|---|---|
 | `GET /recurrences` | `type`, `status=active\|paused\|ended\|all` (default `active`) | `{ items: [Recurrence + next_occurrence] }` |
 | `GET /recurrences/{id}` | | Recurrence |
-| `POST /recurrences` | The Recurrence fields (schemas §12), plus an optional `register_first: { occurrence_date, amount?, description? }` | 201 `{ recurrence, registered: Expense \| Income \| null }` |
+| `POST /recurrences` | The Recurrence fields (schemas §12), plus an optional `register_first: { occurrence_date, transaction_date?, amount?, description? }` | 201 `{ recurrence, registered: Expense \| Income \| null }` |
 | `PATCH /recurrences/{id}` | Any field except `type` | Recurrence. Only affects unregistered occurrences (§12.3). |
 | `POST /recurrences/{id}/pause` and `/resume` | | Recurrence |
 | `POST /recurrences/{id}/end` | `{ end_date }` (default today) | Recurrence |
@@ -279,7 +279,7 @@ The income rules are in schemas §11.
 
 ### 12.2 Details
 
-- **`register_first`** creates the Recurrence and its first registered row in **one transaction**. This is the "Repeats" toggle in the entry forms (ui-behavior §6.4).
+- **`register_first`** creates the Recurrence and its first registered row in **one transaction**. This is the "Repeats" toggle in the entry forms (ui-behavior §6.4). `transaction_date` defaults as in the register endpoint (§12.3).
 - **`next_occurrence`** has the shape `{ occurrence_date, payment_date, status }`, or null.
 - **`change-amount`** ends the current Recurrence on `effective_date − 1 day` and creates a copy starting on `effective_date` (§12.3). Payments already registered for occurrences on or after `effective_date` move to the copy, so they aren't shown as unpaid there. `effective_date` must be after `start_date` (otherwise edit the amount) and not after `end_date`.
 - **`status`** is computed: `ENDED` when `end_date` is before today, `PAUSED` when `is_active` is false, otherwise `ACTIVE`. The `status` query parameter filters on it.
@@ -290,7 +290,7 @@ The income rules are in schemas §11.
 | Method & path | Body / query | Returns |
 |---|---|---|
 | `GET /recurrences/{id}/occurrences` | `from`, `to` | `{ items: [Occurrence] }` |
-| `POST /recurrences/{id}/occurrences/{occurrence_date}/register` | Optional overrides: `amount`, `transaction_date`, `description`, `account_id`, `card_id`, `person_id` | 201 Expense or Income. Responds 409 `CONFLICT` if the occurrence is already registered, and 422 if a reference is archived or the person is a former member (§12.2, §4.2 rule 6). |
+| `POST /recurrences/{id}/occurrences/{occurrence_date}/register` | Optional overrides: `amount`, `transaction_date` (default: the occurrence date; for a credit card fixed expense, a purchase date inside the bill due that day, schemas §12.1), `description`, `account_id`, `card_id`, `person_id` | 201 Expense or Income. Responds 409 `CONFLICT` if the occurrence is already registered, and 422 if a reference is archived or the person is a former member (§12.2, §4.2 rule 6). |
 | `POST /recurrences/{id}/occurrences/{occurrence_date}/skip` | | 204 |
 | `DELETE /recurrences/{id}/occurrences/{occurrence_date}/skip` | | 204 (undoes the skip) |
 | `GET /occurrences/overdue` | | `{ items: [Occurrence + recurrence_id] }` across the whole household, oldest first |

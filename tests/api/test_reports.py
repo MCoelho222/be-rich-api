@@ -70,7 +70,7 @@ def h(client):
                                  "account_id": bank["id"], "category_id": cats["Rent"], "start_date": "2026-09-25",
                                  "description": "Rent"})  # fmt: skip
     post(client, "recurrences", {"type": "EXPENSE", "amount": "100.00", "payment_method": "CREDIT",
-                                 "card_id": card["id"], "category_id": cats["Gym"], "start_date": "2026-12-01",
+                                 "card_id": card["id"], "category_id": cats["Gym"], "start_date": "2027-01-01",
                                  "description": "Gym"})  # fmt: skip
     return {"owner": owner["user"]["id"], "bank": bank["id"], "card": card["id"], "cats": cats, "salary": salary}
 

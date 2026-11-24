@@ -17,6 +17,7 @@ RecurrenceStatus = Literal["ACTIVE", "PAUSED", "ENDED"]
 
 class RegisterFirst(BaseModel):
     occurrence_date: dt.date
+    transaction_date: dt.date | None = None  # default: as in RegisterIn
     amount: MoneyIn | None = None
     description: Text(200) | None = None
 
@@ -32,7 +33,7 @@ class RecurrenceCreate(BaseModel):
     category_id: uuid.UUID
     description: Text(200) | None = None
     interval_months: Interval = 1
-    day_of_month: Day | None = None  # default: start_date's day
+    day_of_month: Day | None = None  # default: start_date's day; credit card expenses: the card's due_day
     start_date: dt.date | None = None  # default: today
     end_date: dt.date | None = None
     register_first: RegisterFirst | None = None
@@ -64,7 +65,9 @@ class ChangeAmountIn(BaseModel):
 
 class RegisterIn(BaseModel):
     amount: MoneyIn | None = None
-    transaction_date: dt.date | None = None  # default: the occurrence date
+    # default: the occurrence date; for a credit card fixed expense, a purchase date inside the
+    # statement due on the occurrence date (today, or the statement's last day once it closed)
+    transaction_date: dt.date | None = None
     description: Text(200) | None = None
     account_id: uuid.UUID | None = None
     card_id: uuid.UUID | None = None

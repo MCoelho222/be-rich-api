@@ -90,10 +90,10 @@ def create_recurrence(body: RecurrenceCreate, current: CurrentUser = Depends(get
     registered = None
     if body.register_first is not None:
         first = body.register_first
-        overrides = {"amount": first.amount}
+        overrides = {"amount": first.amount, "transaction_date": first.transaction_date}
         if "description" in first.model_fields_set:
             overrides["description"] = first.description
-        registered = svc.register(db, current.household, current.user, rec, first.occurrence_date, overrides)
+        registered = svc.register(db, current.household, current.user, rec, first.occurrence_date, overrides, now)
     db.commit()
     return RecurrenceCreated(recurrence=to_out(db, rec, now), registered=row_out(rec, registered) if registered else None)
 
@@ -195,7 +195,7 @@ def register_occurrence(
 ):
     rec = svc.get(db, current.household.id, recurrence_id)
     overrides = {f: getattr(body, f) for f in body.model_fields_set} if body else {}
-    row = svc.register(db, current.household, current.user, rec, occurrence_date, overrides)
+    row = svc.register(db, current.household, current.user, rec, occurrence_date, overrides, today())
     db.commit()
     return row_out(rec, row)
 

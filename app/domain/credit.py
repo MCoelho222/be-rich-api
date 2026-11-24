@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 
 from app.domain.dates import clamp_date, shift_month
 
@@ -49,6 +49,20 @@ def statement_closing_in(year: int, month: int, cycle: CardCycle) -> Statement:
     else:
         due_year, due_month = shift_month(year, month, 1)
     return Statement(closing_date, clamp_date(due_year, due_month, cycle.due_day))
+
+
+def statement_due_in(year: int, month: int, cycle: CardCycle) -> Statement:
+    """The statement whose nominal due date falls in the given month."""
+    if cycle.due_day > cycle.best_buy_day:
+        return statement_closing_in(year, month, cycle)
+    return statement_closing_in(*shift_month(year, month, -1), cycle)
+
+
+def purchase_window(statement: Statement, cycle: CardCycle) -> tuple[date, date]:
+    """The first and last purchase dates that belong to `statement`."""
+    closing = statement.closing_date
+    year, month = shift_month(closing.year, closing.month, -1)
+    return clamp_date(year, month, cycle.best_buy_day), closing - timedelta(days=1)
 
 
 def next_statement(

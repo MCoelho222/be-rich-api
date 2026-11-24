@@ -17,6 +17,7 @@ from app.api.errors import ApiError, validation_error
 from app.domain.enums import AccountType, CardType, EntryType
 from app.models import Account, Card, Category, Expense, Household, Income, Recurrence, User
 from app.schemas.common import blank_to_none
+from app.services.recurrences import follow_card_due_day
 from app.schemas.reference import (
     AccountCreate,
     AccountPatch,
@@ -265,9 +266,11 @@ def update_card(db: Session, card: Card, body: CardPatch) -> None:
         # because the owner left or the account was archived later.
         check_owner="owner_id" in sent, check_account="account_id" in sent,
     )  # fmt: skip
+    old_due_day = card.due_day
     for field, value in final.items():
         setattr(card, field, value)
     _flush_unique(db, "alias", CARD_ALIAS_TAKEN)
+    follow_card_due_day(db, card, old_due_day)
 
 
 def unarchive_card(db: Session, card: Card) -> None:

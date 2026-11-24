@@ -382,7 +382,7 @@ A Recurrence is a **fixed expense or income** (rent, salary, subscriptions) that
 | `category_id` | uuid → Category | Yes | | Must be active, with a `type` that matches the Recurrence. |
 | `description` | string(≤200) | No | | |
 | `interval_months` | integer(1–12) | Yes | `1` | 1 means monthly, 12 means yearly. |
-| `day_of_month` | integer(1–31) | Yes | `start_date.day` | |
+| `day_of_month` | integer(1–31) | Yes | `start_date.day` | For credit card expenses, always the card's `due_day` (§12.1). |
 | `start_date` | date | Yes | today | First possible occurrence. |
 | `end_date` | date | No | | Last possible occurrence. Null means no end. Must be on or after `start_date`. |
 | `skipped_dates` | date[] | No | `[]` | Occurrences that the user said will not happen (for example, a month without the gym). |
@@ -399,6 +399,10 @@ A Recurrence is a **fixed expense or income** (rent, salary, subscriptions) that
 - An occurrence is **pending** when it is valid, unregistered, and its date falls in the current month.
 - An occurrence is **overdue** when it is valid, unregistered, and its date is in an earlier month. Overdue occurrences are **never registered automatically**. They stay overdue until a user registers or skips them.
 - **Payment date of an occurrence:** computed with the payment-date rules for its method (§10.2, §10.3 and §11.1), using `occurrence_date` as the `transaction_date`.
+- **Credit card fixed expenses** (`type = EXPENSE`, `payment_method = CREDIT`) run on the card's bills: each occurrence **is a statement's due date**.
+  - `day_of_month` is always the card's `due_day`. The server sets it on create and update, ignoring the client's value. When a card's `due_day` changes, its credit recurrences follow: `day_of_month` changes, and registered rows and `skipped_dates` move to the new day in the same month.
+  - The payment date of an occurrence is the occurrence date moved to the next business day (§17).
+  - When an occurrence is registered without a `transaction_date`, the row gets a purchase date inside that statement (§10.3), so it is paid with that bill. The date is today while the statement is still open, otherwise the statement's nearest day (its first day if it hasn't opened yet, its last day if it has closed).
 
 ### 12.2 Registering an occurrence
 

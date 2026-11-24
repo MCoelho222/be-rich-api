@@ -123,13 +123,45 @@ class TestOccurrences:
         assert post(client, f"{base}/2026-11-05/skip").status_code == 409  # registered can't be skipped
         assert len(client.get("expenses", params={"fixed_only": True}).json()["items"]) == 1
 
-    def test_credit_recurrence_uses_the_card_cycle(self, client, setup):
-        rec = rent(client, setup, payment_method="CREDIT", card_id=setup["card"], start_date="2026-11-10",
+    def test_credit_recurrence_occurs_on_the_card_due_dates(self, client, setup):
+        # Card 25/5. A purchase on Nov 10 is on the statement due Dec 5 (a Saturday, paid Dec 7);
+        # the client sends that due date as the first occurrence, with the purchase date.
+        rec = rent(client, setup, payment_method="CREDIT", card_id=setup["card"], start_date="2026-12-05",
+                   day_of_month=20, category_id=setup["gym"], amount="120.00",
+                   register_first={"occurrence_date": "2026-12-05", "transaction_date": "2026-11-10"})  # fmt: skip
+        created, row = rec["recurrence"], rec["registered"]
+        assert (created["account_id"], created["day_of_month"]) == (setup["bank"], 5)  # the card's due day wins
+        assert (row["card_id"], row["transaction_date"], row["payment_date"]) == (setup["card"], "2026-11-10", "2026-12-07")
+        assert created["next_occurrence"]["occurrence_date"] == "2027-01-05"
+        assert created["next_occurrence"]["payment_date"] == "2027-01-05"
+
+    def test_credit_register_defaults_to_a_purchase_inside_the_statement(self, client, setup):
+        rec = rent(client, setup, payment_method="CREDIT", card_id=setup["card"], start_date="2026-11-05",
                    category_id=setup["gym"], amount="120.00")["recurrence"]  # fmt: skip
-        assert rec["account_id"] == setup["bank"]
-        assert rec["next_occurrence"]["payment_date"] == "2026-12-07"
-        row = post(client, f"recurrences/{rec['id']}/occurrences/2026-11-10/register").json()
-        assert (row["card_id"], row["payment_date"]) == (setup["card"], "2026-12-07")
+        base = f"recurrences/{rec['id']}/occurrences"
+        # Due Dec 5: purchases Oct 25 - Nov 24, so today (Nov 20) is used.
+        row = post(client, f"{base}/2026-12-05/register").json()
+        assert (row["transaction_date"], row["payment_date"]) == ("2026-11-20", "2026-12-07")
+        # Due Nov 5: purchases Sep 25 - Oct 24, which already closed.
+        row = post(client, f"{base}/2026-11-05/register").json()
+        assert (row["transaction_date"], row["payment_date"]) == ("2026-10-24", "2026-11-05")
+        # Due Jan 5: purchases Nov 25 - Dec 24, not open yet.
+        row = post(client, f"{base}/2027-01-05/register").json()
+        assert (row["transaction_date"], row["payment_date"]) == ("2026-11-25", "2027-01-05")
+
+    def test_credit_recurrence_follows_the_card_due_day(self, client, setup):
+        rec = rent(client, setup, payment_method="CREDIT", card_id=setup["card"], start_date="2026-11-05",
+                   category_id=setup["gym"], amount="120.00")["recurrence"]  # fmt: skip
+        base = f"recurrences/{rec['id']}/occurrences"
+        post(client, f"{base}/2026-11-05/register")
+        post(client, f"{base}/2026-12-05/skip")
+        client.patch(f"cards/{setup['card']}", json={"due_day": 10}, headers=csrf(client))
+        moved = client.get(f"recurrences/{rec['id']}").json()
+        assert moved["day_of_month"] == 10
+        assert moved["skipped_dates"] == ["2026-12-10"]
+        assert statuses(client, rec["id"], "2026-11-01", "2027-01-31") == [
+            ("2026-11-10", "REGISTERED"), ("2026-12-10", "SKIPPED"), ("2027-01-10", "FUTURE")
+        ]
 
     def test_register_blocked_by_archived_category_until_fixed(self, client, setup):
         rec = rent(client, setup)["recurrence"]
