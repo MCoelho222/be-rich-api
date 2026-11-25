@@ -33,7 +33,7 @@ def setup(client):
     debit = post(client, "cards", {"alias": "NuDebit", "account_id": bank["id"], "type": "DEBIT"}).json()
     cash = next(a for a in client.get("accounts").json()["items"] if a["type"] == "CASH")
     expense_categories = {c["name"]: c["id"] for c in client.get("categories", params={"type": "EXPENSE"}).json()["items"]}
-    salary = post(client, "categories", {"type": "INCOME", "name": "Salary"}).json()
+    salary = next(c for c in client.get("categories", params={"type": "INCOME"}).json()["items"] if c["name"] == "Salary")
     return {
         "owner": owner, "bank": bank["id"], "cash": cash["id"], "credit": credit["id"], "debit": debit["id"],
         "food": expense_categories["Food"], "car": expense_categories["Car"], "salary": salary["id"],

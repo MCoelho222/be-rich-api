@@ -41,9 +41,17 @@ class TestHouseholdSeed:
         assert household.name == "Marcelo's household"
         assert household.default_currency is Currency.BRL
 
-        names = db.scalars(select(Category.name).where(Category.household_id == household.id)).all()
-        assert sorted(names) == sorted(DEFAULT_EXPENSE_CATEGORIES[Language.EN])
-        assert len(names) == 25
+        def seeded(entry_type):
+            return db.execute(
+                select(Category.name, Category.seed_key).where(
+                    Category.household_id == household.id, Category.type == entry_type
+                )
+            ).all()
+
+        expenses = seeded(EntryType.EXPENSE)
+        assert sorted(n for n, _ in expenses) == sorted(DEFAULT_EXPENSE_CATEGORIES[Language.EN])
+        assert len(expenses) == 25 and ("Rent", "rent") in expenses
+        assert sorted(seeded(EntryType.INCOME)) == [("Investments", "investments"), ("Other", "other"), ("Salary", "salary")]
 
         cash = cash_account(db, household)
         assert (cash.name, cash.opening_balance, cash.opening_balance_date) == ("Cash", Decimal("0.00"), TODAY)

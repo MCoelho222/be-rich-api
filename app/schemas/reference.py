@@ -104,6 +104,7 @@ class CategoryOut(OrmModel):
     id: uuid.UUID
     type: EntryType
     name: str
+    seed_key: str | None  # set on built-in categories until they are renamed
     is_active: bool
     created_at: datetime
     updated_at: datetime

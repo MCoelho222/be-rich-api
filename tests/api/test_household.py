@@ -82,7 +82,7 @@ class TestMembers:
 
         # Ana has her own new household with seed data, and her sessions ended
         assert str(ana.household_id) != household_id
-        assert db.scalar(select(func.count()).select_from(Category).where(Category.household_id == ana.household_id)) == 25
+        assert db.scalar(select(func.count()).select_from(Category).where(Category.household_id == ana.household_id)) == 28
         assert ana_client.get("auth/me").status_code == 401
         # Data stays behind; her cards are archived; she is now a former member
         assert str(expense.household_id) == household_id

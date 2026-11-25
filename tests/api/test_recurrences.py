@@ -26,7 +26,7 @@ def setup(client):
     bank = post(client, "accounts", {"name": "Nubank"}).json()
     card = post(client, "cards", {"alias": "NuCredit", "account_id": bank["id"], "best_buy_day": 25, "due_day": 5}).json()
     categories = {c["name"]: c["id"] for c in client.get("categories", params={"type": "EXPENSE"}).json()["items"]}
-    salary = post(client, "categories", {"type": "INCOME", "name": "Salary"}).json()
+    salary = next(c for c in client.get("categories", params={"type": "INCOME"}).json()["items"] if c["name"] == "Salary")
     return {"owner": owner, "bank": bank["id"], "card": card["id"], "rent": categories["Rent"],
             "gym": categories["Gym"], "food": categories["Food"], "salary": salary["id"]}  # fmt: skip
 

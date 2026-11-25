@@ -338,6 +338,8 @@ def update_category(db: Session, category: Category, body: CategoryPatch) -> Non
         raise validation_error({"name": ["Can't be empty"]})
     if _category_name_taken(db, category.household_id, category.type, body.name, exclude=category.id):
         raise _conflict("name", CATEGORY_NAME_TAKEN)
+    if body.name != category.name:
+        category.seed_key = None  # the user's own name wins over the translated one
     category.name = body.name
     _flush_unique(db, "name", CATEGORY_NAME_TAKEN)
 

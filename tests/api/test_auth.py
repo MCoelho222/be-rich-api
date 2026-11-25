@@ -46,7 +46,7 @@ class TestSignup:
             "default_currency": "BRL",
         }
         household_id = body["user"]["household_id"]
-        assert db.scalar(select(func.count()).select_from(Category).where(Category.household_id == household_id)) == 25
+        assert db.scalar(select(func.count()).select_from(Category).where(Category.household_id == household_id)) == 28  # 25 expense + 3 income
         assert db.scalar(
             select(Account.name).where(Account.household_id == household_id, Account.type == AccountType.CASH)
         ) == "Cash"
@@ -63,7 +63,8 @@ class TestSignup:
         household_id = body["user"]["household_id"]
         assert body["user"]["language"] == "pt" and body["household"]["name"] == "Casa de Marcelo"
         names = set(db.scalars(select(Category.name).where(Category.household_id == household_id)))
-        assert {"Aluguel", "Alimentação", "Outros"} <= names and len(names) == 25
+        assert {"Aluguel", "Alimentação", "Outros", "Salário", "Investimentos"} <= names
+        assert len(names) == 27  # 28 categories; "Outros" is both an expense and an income one
         assert db.scalar(
             select(Account.name).where(Account.household_id == household_id, Account.type == AccountType.CASH)
         ) == "Dinheiro"

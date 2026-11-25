@@ -56,7 +56,7 @@ def h(client):
     bank = post(client, "accounts", {"name": "Nubank", "opening_balance": "1000.00", "opening_balance_date": "2026-10-31"})
     card = post(client, "cards", {"alias": "NuCredit", "account_id": bank["id"], "best_buy_day": 25, "due_day": 5})
     cats = {c["name"]: c["id"] for c in client.get("categories", params={"type": "EXPENSE"}).json()["items"]}
-    salary = post(client, "categories", {"type": "INCOME", "name": "Salary"})["id"]
+    salary = next(c for c in client.get("categories", params={"type": "INCOME"}).json()["items"] if c["name"] == "Salary")["id"]
 
     post(client, "incomes", {"transaction_date": "2026-11-05", "category_id": salary, "total_amount": "5000.00",
                              "parts": [{"payment_method": "PIX", "account_id": bank["id"]}]})  # fmt: skip

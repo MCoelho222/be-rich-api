@@ -68,4 +68,6 @@ class Category(UUIDPk, Timestamps, Base):
     household_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("households.id"), index=True)
     type: Mapped[EntryType] = mapped_column(str_enum(EntryType, "entry_type"))
     name: Mapped[str] = mapped_column(String(30))
+    # A built-in category keeps its key until renamed; the UI translates it (schemas §9).
+    seed_key: Mapped[str | None] = mapped_column(String(30), default=None)
     is_active: Mapped[bool] = mapped_column(default=True)

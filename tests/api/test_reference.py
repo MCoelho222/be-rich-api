@@ -204,14 +204,20 @@ class TestCategories:
     def test_list_requires_type(self, client, owner):
         assert client.get("categories").status_code == 422
         assert len(client.get("categories", params={"type": "EXPENSE"}).json()["items"]) == 25
-        assert client.get("categories", params={"type": "INCOME"}).json()["items"] == []
+        incomes = client.get("categories", params={"type": "INCOME"}).json()["items"]
+        assert sorted((c["name"], c["seed_key"]) for c in incomes) == [
+            ("Investments", "investments"), ("Other", "other"), ("Salary", "salary")
+        ]
 
     def test_create_rename_and_uniqueness(self, client, owner):
-        salary = post(client, "categories", {"type": "INCOME", "name": "Salary"}).json()
+        bonus = post(client, "categories", {"type": "INCOME", "name": "Bonus"}).json()
+        assert bonus["seed_key"] is None
         assert post(client, "categories", {"type": "INCOME", "name": "salary"}).status_code == 409
-        assert post(client, "categories", {"type": "EXPENSE", "name": "Salary"}).status_code == 201
+        assert post(client, "categories", {"type": "EXPENSE", "name": "Bonus"}).status_code == 201
+        salary = next(c for c in client.get("categories", params={"type": "INCOME"}).json()["items"] if c["name"] == "Salary")
+        assert patch(client, f"categories/{salary['id']}", {"name": "Salary"}).json()["seed_key"] == "salary"  # unchanged
         renamed = patch(client, f"categories/{salary['id']}", {"name": "Wages"}).json()
-        assert renamed["name"] == "Wages"
+        assert (renamed["name"], renamed["seed_key"]) == ("Wages", None)  # renamed: no longer translated
         assert patch(client, f"categories/{salary['id']}", {"name": "Food"}).status_code == 200  # Food is EXPENSE
 
     def test_archive_and_delete(self, client, owner, db):

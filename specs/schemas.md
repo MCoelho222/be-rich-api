@@ -71,7 +71,7 @@ The group of people who share finances. It is created automatically when someone
 
 ### 4.1 What a new household starts with
 
-- The default expense categories (§9).
+- The default expense and income categories (§9).
 - One `CASH` account named "Cash" ("Dinheiro" in Portuguese), with an opening balance of 0 (§7).
 - The name "<first name>'s household" ("Casa de <first name>" in Portuguese).
 
@@ -213,6 +213,7 @@ Expense and income categories share one table and are told apart by `type`. Both
 | `household_id` | uuid → Household | Yes | | |
 | `type` | EntryType | Yes | | Cannot be changed after creation. |
 | `name` | string(1–30) | Yes | | Unique per household and `type`. |
+| `seed_key` | string(≤30) | No | | Set on the built-in categories (below), for example `rent`. Cleared when the category is renamed. The UI shows a category that has one in the language the user picked, instead of `name`. |
 | `is_active` | boolean | Yes | `true` | `false` means archived (§18). |
 | `created_at` | timestamp | Yes | auto | |
 | `updated_at` | timestamp | Yes | auto | |
@@ -221,7 +222,9 @@ Expense and income categories share one table and are told apart by `type`. Both
 - **English:** Food, Gasoline, Car, House, Rent, Courses, Music, Clothes, Health, Pharmacy, Gym, Kids, Trips, Transport, Entertainment, Birthdays, Gas, Electricity, Internet, AI, Storage, Phone, Business, Tax, Other.
 - **Portuguese:** Alimentação, Combustível, Carro, Casa, Aluguel, Cursos, Música, Roupas, Saúde, Farmácia, Academia, Filhos, Viagens, Transporte, Lazer, Aniversários, Gás, Energia, Internet, IA, Armazenamento, Telefone, Negócios, Impostos, Outros.
 
-**Income categories created with each new household:** none. Users create them as needed.
+**Income categories created with each new household:** Salary, Investments, Other (Salário, Investimentos, Outros).
+
+**Built-in categories follow the UI language.** Each one is created with its `seed_key`. While it has one, the UI shows it translated into the language the user picked, whatever language it was created in. Renaming a category clears its key, so from then on it is shown with the user's own name in every language.
 
 ---
 
