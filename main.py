@@ -1,25 +1,41 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from app.routes.users import router as users_router
-from app.routes.incomes import router as incomes_router
-from app.routes.expenses import router as expenses_router
+"""ASGI entry point: `uvicorn main:app` / `gunicorn -k uvicorn.workers.UvicornWorker main:app`."""
 
-app = FastAPI()
+from fastapi import Depends, FastAPI
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
-# Configure CORS
-origins = [
-    "http://localhost:3000",  # Next.js frontend URL
-    # Add other origins if needed
-]
+from app.api.errors import install_error_handlers
+from app.api.routes import auth, entries, household, recurrences, reference, reports
+from app.db.session import get_db
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,            # Allow specific origins
-    allow_credentials=True,           # Allow cookies, authorization headers
-    allow_methods=["*"],              # Allow all HTTP methods
-    allow_headers=["*"],              # Allow all headers
-)
+API_PREFIX = "/api/v1"
 
-app.include_router(users_router, prefix="/users")
-app.include_router(incomes_router, prefix="/incomes")
-app.include_router(expenses_router, prefix="/expenses")
+
+def create_app() -> FastAPI:
+    app = FastAPI(
+        title="Be Rich API",
+        version="0.2.0",
+        openapi_url=f"{API_PREFIX}/openapi.json",
+        docs_url=f"{API_PREFIX}/docs",
+        redoc_url=None,
+    )
+    install_error_handlers(app)
+
+    @app.get(f"{API_PREFIX}/health", tags=["system"])
+    def health(db: Session = Depends(get_db)) -> dict[str, str]:
+        """Liveness and database connectivity (specs/operations.md §1.3)."""
+        db.execute(text("SELECT 1"))
+        return {"status": "ok", "db": "ok"}
+
+    app.include_router(auth.router, prefix=API_PREFIX)
+    app.include_router(household.router, prefix=API_PREFIX)
+    # Before reference, so /cards/bills wins if a GET /cards/{card_id} is ever added
+    app.include_router(reports.router, prefix=API_PREFIX)
+    app.include_router(reference.router, prefix=API_PREFIX)
+    app.include_router(entries.expenses_router, prefix=API_PREFIX)
+    app.include_router(entries.incomes_router, prefix=API_PREFIX)
+    app.include_router(recurrences.router, prefix=API_PREFIX)
+    return app
+
+
+app = create_app()

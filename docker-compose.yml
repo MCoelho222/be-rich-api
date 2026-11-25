@@ -1,5 +1,3 @@
-version: "3.8" # Use the latest version of Docker Compose
-
 services:
   be_rich_db:
     container_name: be_rich_db
@@ -38,10 +36,56 @@ services:
     depends_on:
       be_rich_db:
         condition: service_healthy # Wait for the DB to be healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
     restart: unless-stopped
     init: true
     networks:
       - be_rich_network
+
+  # Scheduled jobs (specs/operations.md §2). Exactly one instance: a scheduler
+  # inside the API would run each job once per gunicorn worker.
+  be_rich_worker:
+    container_name: be_rich_worker
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    entrypoint: ["python", "-m", "app.jobs"]
+    environment:
+      DB_URL: ${DB_URL}
+    volumes:
+      - .:/app
+    depends_on:
+      be_rich_api:
+        condition: service_healthy # migrations have run
+    restart: unless-stopped
+    init: true
+    networks:
+      - be_rich_network
+
+  # Throwaway database for the test suite (data lives in memory).
+  # Start with: docker compose --profile test up -d be_rich_test_db
+  be_rich_test_db:
+    container_name: be_rich_test_db
+    image: postgres:15.14
+    profiles: ["test"]
+    environment:
+      POSTGRES_DB: berich_test
+      POSTGRES_USER: berich
+      POSTGRES_PASSWORD: berich
+    ports:
+      - "5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U berich -d berich_test"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
 
 networks:
   be_rich_network:
