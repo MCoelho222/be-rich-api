@@ -31,6 +31,7 @@ Household ─┬─< User
            ├─< Account             (type: BANK | CASH)
            ├─< Card >── Account (paying account)
            ├─< Category            (type: EXPENSE | INCOME)
+           ├─< Investment          (liquidity: DAILY | MATURITY)
            ├─< Recurrence >── User, Account, Card (optional), Category
            ├─< Expense >── User (spender), Account, Card (optional), Category, Recurrence (optional)
            └─< Income  >── User (receiver), Account, Category, Recurrence (optional)
@@ -50,6 +51,7 @@ Every household-owned record belongs to exactly one household. A user can only r
 | `PaymentMethod` | `CASH`, `PIX`, `CREDIT`, `DEBIT`, `BOLETO`, `BANK_TRANSFER` | Exactly one per Expense/Income row (see §10.5 for split payments). |
 | `Currency` | `BRL`, `USD`, `EUR` | ISO 4217 codes. A currency can only be added if the exchange-rate provider supports it (§16). |
 | `AccountType` | `BANK`, `CASH` | |
+| `Liquidity` | `DAILY`, `MATURITY` | When an investment can be redeemed (§20). |
 | `CardType` | `CREDIT`, `DEBIT`, `CREDIT_DEBIT` | Which payment methods a card can be used with. |
 | `EntryType` | `EXPENSE`, `INCOME` | Used by Category and Recurrence. |
 | `EditScope` | `THIS`, `THIS_AND_FOLLOWING`, `ALL` | Used when editing or deleting rows that belong to an installment series (§10.6). |
@@ -467,7 +469,7 @@ balance(a, t) = opening_balance(a)
 
 ### 14.2 Household balance
 
-- **Total balance** = Σ `balance(a, t)` over every account (including archived ones), each converted to `default_currency`.
+- **Total balance** = Σ `balance(a, t)` over every account (including archived ones), each converted to `default_currency`, plus the investments counted on `t` (§20.1).
 - **Cumulative projected balance:** the total balance at the end of each month, from the current month onward. This is the main line of the projection chart.
 
 ### 14.3 Reconciliation
@@ -579,6 +581,31 @@ It does **not** apply to the other payment methods, because their payment date i
 - **Moving an existing account to another household** through an invitation. This also means a former member cannot be invited back (§6.1 rule 6).
 - Municipal and state holidays (§17).
 - Automatically registering overdue fixed entries (§12.1). This was a deliberate decision.
+
+## 20. Investment
+
+Money the household has invested outside its accounts: a CDB, Tesouro Direto, a fund and so on. It records **what was invested**, not its returns. Users edit `amount` when the bank shows a new value.
+
+| Field | Type | Req. | Default | Constraints / notes |
+|---|---|---|---|---|
+| `id` | uuid | Yes | auto | |
+| `household_id` | uuid → Household | Yes | | |
+| `name` | string(≤40) | No | | A label such as "CDB 110% CDI". |
+| `bank` | string(1–40) | Yes | | Free text: the bank or broker holding it. Not linked to an Account. |
+| `amount` | decimal(12,2) | Yes | | > 0. |
+| `currency` | Currency | Yes | household's `default_currency` | |
+| `invested_on` | date | Yes | today | |
+| `liquidity` | Liquidity | Yes | | `DAILY`: can be redeemed any day. `MATURITY`: locked until `maturity_date`. |
+| `maturity_date` | date | Cond. | | Required for `MATURITY` and after `invested_on`. Empty for `DAILY`. |
+| `include_in_balance` | bool | Yes | `true` | Whether it counts in the household balance (§20.1). |
+| `created_at` | timestamp | Yes | auto | |
+| `updated_at` | timestamp | Yes | auto | |
+
+### 20.1 Investments in the household balance
+
+- An investment with `include_in_balance` counts in the total balance (§14.2) on every date `t ≥ invested_on`, at its current `amount` converted to `default_currency` with the latest rate. It keeps counting after `maturity_date`, until the user deletes it.
+- It belongs to no account, so per-account balances and the `account_id` filter leave it out.
+- Creating an investment doesn't move money out of an account. To record that, users add an expense on the account.
 
 ---
 

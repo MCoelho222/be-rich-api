@@ -361,6 +361,7 @@ For a range entirely in the past, `realized` equals `total`. The response flag `
   "date": "2026-12-31", "projected": true,
   "currency": "BRL", "rates_as_of": "2026-11-19", "unconverted": [],
   "total": "12450.32",
+  "investments": "10000.00",
   "accounts": [
     { "account_id": "…", "account_currency": "BRL", "balance": "1200.00", "converted": "1200.00" },
     { "account_id": "…", "account_currency": "USD", "balance": null, "converted": null }
@@ -373,6 +374,7 @@ For a range entirely in the past, `realized` equals `total`. The response flag `
 - `projected` is true when `date` is after today.
 - When no rate has ever been cached for an account's currency, its `converted` is null and its balance is listed in `unconverted` instead of being added to `total`.
 - `member_id` is ignored here (§13.1).
+- `investments` is the part of `total` that comes from investments marked `include_in_balance` (schemas §20.1). It is `"0.00"` with `account_id`, because investments belong to no account.
 
 ### 13.3 Dashboard summary
 
@@ -409,7 +411,7 @@ For a range entirely in the past, `realized` equals `total`. The response flag `
       "income":   { "realized": "3100.00", "scheduled": "0.00",   "projected_fixed": "2300.00", "total": "5400.00" },
       "expenses": { "realized": "2650.10", "scheduled": "980.00", "projected_fixed": "1350.65", "total": "4980.75" },
       "net": "419.25",
-      "end_balance": "12869.57", "end_balance_projected": true
+      "end_balance": "12869.57", "end_balance_projected": true, "end_investments": "10000.00"
     }
   ],
   "first_negative_month": "2027-03"
@@ -419,6 +421,7 @@ For a range entirely in the past, `realized` equals `total`. The response flag `
 - Per month and type: `realized` is stored rows paid up to today, `scheduled` is stored rows with a later `payment_date` (installments and other future-dated rows), and `projected_fixed` is projected occurrences. `total` is their sum.
 - `end_balance` is the household total balance (§13.2) on the month's last day; with `account_id`, that account's balance. It ignores `member_id`. It is null when no included account has an opening balance by that date.
 - `end_balance_projected` is true when the month's last day is after today.
+- `end_investments` is the part of `end_balance` that comes from investments (schemas §20.1); `"0.00"` with `account_id`.
 - `first_negative_month` is the first month, from the current month on, whose `end_balance` is below zero, or null.
 
 ### 13.5 Category breakdown
@@ -506,3 +509,14 @@ The stored rows and projected occurrences of the range in one paginated list (§
 | Method & path | Query | Returns |
 |---|---|---|
 | `GET /exchange-rates/latest` | `base` (default: household currency) | `{ base, rate_date, rates: { "USD": "0.18350000", … } }` |
+
+## 15. Investments
+
+| Method & path | Body | Returns |
+|---|---|---|
+| `GET /investments` | | `{ items: [Investment] }`, daily liquidity first, then by `maturity_date` |
+| `POST /investments` | `bank`, `amount`, `liquidity`, and optionally `name`, `currency` (default: household's), `invested_on` (default: today), `maturity_date`, `include_in_balance` (default: true) | 201 Investment |
+| `PATCH /investments/{id}` | any of the fields above | Investment |
+| `DELETE /investments/{id}` | | 204 |
+
+- `maturity_date` is required for `MATURITY` and rejected for `DAILY` (422). Patching `liquidity` to `DAILY` clears it.

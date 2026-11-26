@@ -39,6 +39,7 @@ class BalancesOut(Converted):
     projected: bool
     total: MoneyOut
     accounts: list[AccountBalanceOut]
+    investments: MoneyOut  # included in `total` (schemas §20.1); 0 with an account filter
 
 
 class RealizedTotal(BaseModel):
@@ -75,6 +76,7 @@ class MonthOut(BaseModel):
     net: MoneyOut
     end_balance: MoneyOut | None
     end_balance_projected: bool
+    end_investments: MoneyOut  # included in `end_balance` (schemas §20.1)
 
 
 class ProjectionOut(Converted):
