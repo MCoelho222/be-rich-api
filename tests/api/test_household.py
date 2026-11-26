@@ -1,5 +1,6 @@
 """Household, members, invitations and profile (specs/api.md §4-§6, schemas §4-§6)."""
 
+import base64
 from datetime import timedelta
 
 import pytest
@@ -11,6 +12,11 @@ from app.domain.enums import InvitationStatus
 from app.models import Category, Household, Invitation, User
 from tests.api.conftest import csrf, signup
 from tests.db.factories import make_bank_account, make_card, make_expense
+
+
+PNG_1PX = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+)
 
 
 def new_client(client: TestClient) -> TestClient:
@@ -249,3 +255,28 @@ class TestProfile:
         assert client.patch("me", json={"cpf": "11144477735"}, headers=csrf(client)).status_code == 409
         changed = client.patch("me", json={"email": "New@Example.com"}, headers=csrf(client))
         assert changed.json()["email"] == "new@example.com"
+
+    def test_avatar_upload_and_remove(self, client, owner):
+        image = "data:image/png;base64," + base64.b64encode(PNG_1PX).decode()
+        response = client.put("me/avatar", json={"image": image}, headers=csrf(client))
+        assert response.status_code == 200, response.json()
+        assert response.json()["avatar"] == image
+        assert client.get("auth/me").json()["user"]["avatar"] == image
+
+        assert client.delete("me/avatar", headers=csrf(client)).status_code == 204
+        assert client.get("me").json()["avatar"] is None
+
+    @pytest.mark.parametrize(
+        "image",
+        [
+            "https://example.com/me.png",
+            "data:image/gif;base64,R0lGODlhAQABAAAAACw=",
+            "data:image/png;base64,not base64!",
+            "data:image/jpeg;base64," + base64.b64encode(b"not really a jpeg").decode(),
+            "data:image/jpeg;base64," + base64.b64encode(b"\xff\xd8\xff" + bytes(200_001)).decode(),
+        ],
+    )
+    def test_avatar_rejects_invalid_images(self, client, owner, image):
+        response = client.put("me/avatar", json={"image": image}, headers=csrf(client))
+        assert response.status_code == 422
+        assert client.get("me").json()["avatar"] is None

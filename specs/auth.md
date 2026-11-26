@@ -115,7 +115,7 @@ All paths below are relative to `/api/v1`.
 
 ```json
 {
-  "user": { "id": "…", "name": "…", "email": "…", "household_id": "…" },
+  "user": { "id": "…", "name": "…", "email": "…", "household_id": "…", "language": "en", "avatar": null },
   "household": { "id": "…", "name": "…", "default_currency": "BRL" }
 }
 ```

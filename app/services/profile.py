@@ -1,5 +1,8 @@
 """The user's own profile (specs/schemas.md §5)."""
 
+import base64
+import binascii
+import re
 from datetime import date
 
 from sqlalchemy import select
@@ -16,6 +19,11 @@ from app.services.auth import normalize_email
 ADDRESS_COLUMNS = ("cep", "street", "number", "complement", "neighborhood", "city", "state")
 MIN_BIRTH_DATE = date(1900, 1, 2)
 
+AVATAR_MAX_BYTES = 200_000
+AVATAR_DATA_URL = re.compile(r"data:image/(jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})")
+# The first bytes of each accepted format, so the declared type matches the content.
+AVATAR_SIGNATURES = {"jpeg": (b"\xff\xd8\xff",), "png": (b"\x89PNG\r\n\x1a\n",), "webp": (b"RIFF",)}
+
 
 def to_out(user: User) -> ProfileOut:
     address = None
@@ -24,6 +32,7 @@ def to_out(user: User) -> ProfileOut:
     return ProfileOut(
         id=user.id, household_id=user.household_id, name=user.name, email=user.email, cpf=user.cpf,
         birth_date=user.birth_date, phone=user.phone, address=address, notes=user.notes, language=user.language,
+        avatar=user.avatar,
         created_at=user.created_at, updated_at=user.updated_at,
     )  # fmt: skip
 
@@ -89,3 +98,20 @@ def update_profile(db: Session, user: User, patch: ProfilePatch, today: date) ->
         constraint = str(exc.orig)
         field = "cpf" if "cpf" in constraint else "email"
         raise ApiError(409, "CONFLICT", f"This {field} is already registered.", fields={field: ["Already registered"]}) from exc
+
+
+def set_avatar(user: User, image: str) -> None:
+    """Stores a profile photo sent as a base64 data URL (JPEG, PNG or WebP, at most 200 KB)."""
+    match = AVATAR_DATA_URL.fullmatch(image.strip())
+    if match is None:
+        raise validation_error({"image": ["Must be a JPEG, PNG or WebP image"]})
+    kind, payload = match.groups()
+    try:
+        data = base64.b64decode(payload, validate=True)
+    except (binascii.Error, ValueError):
+        raise validation_error({"image": ["Must be a JPEG, PNG or WebP image"]}) from None
+    if not data.startswith(AVATAR_SIGNATURES[kind]) or (kind == "webp" and data[8:12] != b"WEBP"):
+        raise validation_error({"image": ["Must be a JPEG, PNG or WebP image"]})
+    if len(data) > AVATAR_MAX_BYTES:
+        raise validation_error({"image": ["Must be at most 200 KB"]})
+    user.avatar = f"data:image/{kind};base64,{payload}"

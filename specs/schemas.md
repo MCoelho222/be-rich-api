@@ -105,6 +105,7 @@ All of these use the creating user's `language` (§5). Afterwards they are ordin
 | `phone` | string(≤16) | No | | E.164 format, for example `+5548999999999`. Must be a valid number for its country. |
 | `address` | Address | No | | Embedded object, see §5.1. |
 | `notes` | string(≤500) | No | | Free text about the user. |
+| `avatar` | string | No | | Profile photo as a base64 data URL (`data:image/jpeg;base64,…`). JPEG, PNG or WebP, at most 200 KB decoded. The UI resizes photos before upload. |
 | `language` | `en` \| `pt` | Yes | `en` | The UI language chosen at signup, editable on the profile. Picks the language of a new household's seed data (§4.1). |
 | `created_at` | timestamp | Yes | auto | |
 | `updated_at` | timestamp | Yes | auto | |

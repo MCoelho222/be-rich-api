@@ -51,7 +51,7 @@ def me_body(user: User, household: Household) -> MeOut:
     return MeOut.model_validate(
         {
             "user": {"id": user.id, "name": user.name, "email": user.email, "household_id": user.household_id,
-                     "language": user.language},
+                     "language": user.language, "avatar": user.avatar},
             "household": {
                 "id": household.id,
                 "name": household.name,

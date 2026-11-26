@@ -82,6 +82,12 @@ class ProfilePatch(BaseModel):
     language: Language | None = None
 
 
+class AvatarIn(BaseModel):
+    # Generous bound so oversized payloads are rejected before decoding; the real
+    # limit on the decoded image is applied by the service.
+    image: Annotated[str, Field(max_length=400_000)]
+
+
 class ProfileOut(BaseModel):
     id: uuid.UUID
     household_id: uuid.UUID
@@ -93,5 +99,6 @@ class ProfileOut(BaseModel):
     address: AddressOut | None
     notes: str | None
     language: Language
+    avatar: str | None
     created_at: datetime
     updated_at: datetime
