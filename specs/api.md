@@ -99,6 +99,8 @@ Every error returns the same envelope:
 |---|---|---|
 | `GET /me` | | User (without `password_hash`) |
 | `PATCH /me` | `name`, `email`, `cpf`, `birth_date`, `phone`, `address`, `notes` | User |
+| `PUT /me/avatar` | `{ image }`, a JPEG, PNG or WebP data URL of at most 200 KB | User |
+| `DELETE /me/avatar` | | 204 |
 
 Changing `email` responds 409 `CONFLICT` when the new address is already registered.
 

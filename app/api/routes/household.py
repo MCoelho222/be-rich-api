@@ -16,6 +16,7 @@ from app.models import Household, Invitation, User
 from app.schemas.auth import MeOut
 from app.schemas.common import Items
 from app.schemas.household import (
+    AvatarIn,
     HouseholdOut,
     HouseholdPatch,
     InvitationCreate,
@@ -126,6 +127,28 @@ def patch_profile(
     db.commit()
     db.refresh(current.user)
     return profile_service.to_out(current.user)
+
+
+@router.put("/me/avatar", response_model=ProfileOut, tags=["profile"])
+def put_avatar(
+    body: AvatarIn,
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ProfileOut:
+    profile_service.set_avatar(current.user, body.image)
+    db.commit()
+    db.refresh(current.user)
+    return profile_service.to_out(current.user)
+
+
+@router.delete("/me/avatar", status_code=status.HTTP_204_NO_CONTENT, tags=["profile"])
+def delete_avatar(
+    current: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    current.user.avatar = None
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # --- Invitations -------------------------------------------------------------------

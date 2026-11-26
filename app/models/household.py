@@ -3,7 +3,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Index, String, func, text
+from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Index, String, Text, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, Timestamps, UUIDPk, str_enum
@@ -54,6 +54,8 @@ class User(UUIDPk, Timestamps, Base):
     address_city: Mapped[str | None] = mapped_column(String(60))
     address_state: Mapped[str | None] = mapped_column(String(2))
     notes: Mapped[str | None] = mapped_column(String(500))
+    # A small profile photo as a data URL (§5); the UI resizes it before upload.
+    avatar: Mapped[str | None] = mapped_column(Text)
 
 
 class Invitation(UUIDPk, Base):

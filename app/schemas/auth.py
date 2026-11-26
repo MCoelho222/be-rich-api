@@ -47,6 +47,7 @@ class MeUser(BaseModel):
     email: str
     household_id: uuid.UUID
     language: Language
+    avatar: str | None
 
 
 class MeHousehold(BaseModel):
