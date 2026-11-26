@@ -54,6 +54,15 @@ All times are in `America/Sao_Paulo`.
 ### 2.3 Historical exchange rates
 Historical rates (schemas §16.2) are **not** a scheduled job. The API fetches a missing date on demand, inside the request that needs it, with a 5-second timeout. If that fetch fails, it falls back as described in schemas §16.4.
 
+### 2.4 On Vercel (no worker)
+
+Vercel has no long-running process for the scheduler, so Vercel Cron calls `GET /api/v1/cron/daily` once a day (`vercel.json`, `0 17 * * *` = **14:00** in São Paulo, within the hour on the Hobby plan). The call runs `fx_daily`, `invitations_expire`, `sessions_cleanup`, `rate_limit_cleanup` and `holidays_seed`, in that order.
+
+- **Auth:** Vercel sends `Authorization: Bearer <CRON_SECRET>`. Any other value gets 401. Without `CRON_SECRET` the endpoint answers 404, so it is off in Docker, where the worker runs the jobs.
+- **Failures:** a failing job doesn't stop the others. The response lists each job's counts and `failed`, and is a 500 when any job failed, so it shows as failed in Vercel's cron logs.
+- **Differences from §2.2:** `fx_daily` runs once with no hourly retries. A missed day keeps the previous rates, which are still used with their `rates_as_of` date. `invitations_expire` runs daily rather than hourly.
+- **By hand:** `curl -H "Authorization: Bearer $CRON_SECRET" https://<api>/api/v1/cron/daily`.
+
 ---
 
 ## 3. Configuration (environment variables)
@@ -74,6 +83,7 @@ Variables are loaded from `.env`, which is **never committed** (a `.env.example`
 | `FX_PROVIDER` | `frankfurter` | api, worker | |
 | `FX_BASE_URL` | `https://api.frankfurter.dev/v1` | api, worker | The default. The old `api.frankfurter.app` domain now answers with a redirect. |
 | `LOG_LEVEL` | `INFO` | api, worker | |
+| `CRON_SECRET` | 32+ random characters | api | Vercel only (§2.4). Secret. Unset elsewhere, which disables `/cron/daily`. |
 | `NEXT_PUBLIC_API_BASE` | `/api/v1` | web | A relative path, because the UI and API share an origin. |
 
 ### 3.1 Settings to remove from the current code

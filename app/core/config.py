@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     fx_provider: Literal["frankfurter"] = "frankfurter"
     fx_base_url: str = "https://api.frankfurter.dev/v1"
 
+    # Vercel Cron signs its calls with this secret (specs/operations.md §2.4). Unset: the
+    # cron endpoint is disabled, as in Docker, where the worker container runs the jobs.
+    cron_secret: str | None = None
+
     @field_validator("database_url")
     @classmethod
     def _normalize(cls, value: str) -> str:
