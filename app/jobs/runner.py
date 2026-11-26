@@ -45,6 +45,11 @@ JOBS: dict[str, Job] = {
 }
 
 
+# Where no worker runs the scheduler (Vercel), one daily call runs these in order
+# (specs/operations.md §2.4). All are idempotent, so running them daily is safe.
+DAILY_JOBS = ("fx_daily", "invitations_expire", "sessions_cleanup", "rate_limit_cleanup", "holidays_seed")
+
+
 def run_job(name: str, session_factory: Callable[[], Session] | None = None, **deps: Any) -> dict[str, int] | None:
     """Run one job in its own transaction, logging start, end, counts and errors.
 
