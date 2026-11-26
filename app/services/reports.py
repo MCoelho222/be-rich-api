@@ -30,6 +30,7 @@ from app.models import Account, Card, Category, Expense, Income, Recurrence, Use
 from app.services.calendar import load_holidays
 from app.services.fx import historical_rate, latest_rate
 from app.services.fx_provider import RateProvider
+from app.services.investments import InvestmentBook
 from app.services.recurrences import OccurrenceCalculator, registered_rows, rule_of
 
 MAX_RANGE_DAYS = 1096  # 3 years
@@ -261,6 +262,8 @@ class BalanceBook:
         account_id: uuid.UUID | None = None, include_archived: bool = True,
     ) -> None:  # fmt: skip
         self.today, self.conv = today, conv
+        # Investments belong to no account, so a per-account view leaves them out (schemas §20.1).
+        self.investments = InvestmentBook(db, household_id) if account_id is None else None
         stmt = select(Account).where(Account.household_id == household_id)
         if account_id is not None:
             stmt = stmt.where(Account.id == account_id)
@@ -305,9 +308,17 @@ class BalanceBook:
             return value
         return value + _sum(m.signed for m in self.projected[account.id] if m.payment_date <= at)
 
-    def at(self, day: date, record: bool = True) -> tuple[Decimal | None, list[dict]]:
-        """The total in the household currency and the per-account balances on `day`.
-        `record` controls whether unconvertible balances are reported (once per request)."""
+    def invested(self, day: date, record: bool = True) -> Decimal | None:
+        """Investments counted in the balance on `day`, in the household currency (§20.1)."""
+        if self.investments is None:
+            return None
+        return InvestmentBook.total(
+            self.investments.held(day), lambda i: self.conv.convert(i.amount, i.currency, None, record=record)
+        )
+
+    def at(self, day: date, record: bool = True) -> tuple[Decimal | None, list[dict], Decimal | None]:
+        """The total in the household currency, the per-account balances and the invested
+        amount on `day`. `record` controls whether unconvertible balances are reported (once per request)."""
         accounts, total, any_open = [], ZERO, False
         for account in self.accounts:
             balance = self.balance(account, day)
@@ -323,14 +334,22 @@ class BalanceBook:
                     "converted": None if converted is None else round_money(converted),
                 }  # fmt: skip
             )
-        return (round_money(total) if any_open else None), accounts
+        invested = self.invested(day, record)
+        if invested is not None:
+            total += invested
+            any_open = True
+            invested = round_money(invested)
+        return (round_money(total) if any_open else None), accounts, invested
 
 
 def balances(db: Session, household_id: uuid.UUID, day: date, today: date, conv: Converter,
              account_id: uuid.UUID | None, include_archived: bool) -> dict:  # fmt: skip
     book = BalanceBook(db, household_id, day, today, conv, account_id, include_archived)
-    total, accounts = book.at(day)
-    return {"date": day, "projected": day > today, **conv.meta(), "total": total or ZERO, "accounts": accounts}
+    total, accounts, invested = book.at(day)
+    return {
+        "date": day, "projected": day > today, **conv.meta(), "total": total or ZERO, "accounts": accounts,
+        "investments": invested or ZERO,
+    }  # fmt: skip
 
 
 # --- Summary (§13.3) ---------------------------------------------------------------
@@ -394,7 +413,7 @@ def projection(db: Session, household_id: uuid.UUID, start: date, end: date, tod
                 "projected_fixed": round_money(projected), "total": round_money(realized + scheduled + projected),
             }  # fmt: skip
         # Unconvertible balances are reported once, for the current month.
-        end_balance, _ = book.at(month_end, record=month_index(month_start) == month_index(today))
+        end_balance, _, end_investments = book.at(month_end, record=month_index(month_start) == month_index(today))
         if first_negative is None and end_balance is not None and end_balance < 0 and month_end >= today:
             first_negative = month_start.strftime("%Y-%m")
         months.append(
@@ -402,6 +421,7 @@ def projection(db: Session, household_id: uuid.UUID, start: date, end: date, tod
                 "month": month_start.strftime("%Y-%m"), **parts,
                 "net": parts["income"]["total"] - parts["expenses"]["total"],
                 "end_balance": end_balance, "end_balance_projected": month_end > today,
+                "end_investments": end_investments or ZERO,
             }  # fmt: skip
         )
     return {"from": start, "to": end, **conv.meta(), "months": months, "first_negative_month": first_negative}

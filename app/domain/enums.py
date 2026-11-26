@@ -30,6 +30,13 @@ class AccountType(StrEnum):
     CASH = "CASH"
 
 
+class Liquidity(StrEnum):
+    """When an investment can be redeemed (schemas §20)."""
+
+    DAILY = "DAILY"
+    MATURITY = "MATURITY"
+
+
 class CardType(StrEnum):
     CREDIT = "CREDIT"
     DEBIT = "DEBIT"
