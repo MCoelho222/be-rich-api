@@ -30,6 +30,13 @@ Each gunicorn worker is its own process. If the scheduler ran inside the `api` s
 - `GET /api/v1/health` returns `{ "status": "ok", "db": "ok" }`. It checks database connectivity with `SELECT 1`.
 - Caddy and Docker both use it as the healthcheck.
 
+### 1.4 On Vercel
+The API can also run as a Vercel Python function (`vercel.json`), with the database on Neon through Vercel's integration.
+- **Region:** the function must run in the database's region. `vercel.json` pins it to `gru1` (São Paulo), next to Neon's `sa-east-1`. In another region every query pays a cross-continent round trip, and endpoints with many queries hit the function's 10-second timeout.
+- **Dependencies:** Vercel installs from `requirements.txt`. Don't add a `pyproject.toml` with a `[project]` table: Vercel would install from it instead, without the dependencies.
+- **Jobs:** there is no worker; see §2.4.
+- **Migrations:** they don't run on deploy; see §4.1.
+
 ---
 
 ## 2. Scheduled jobs
@@ -97,6 +104,7 @@ Variables are loaded from `.env`, which is **never committed** (a `.env.example`
 ### 4.1 Migrations
 - **Fresh start:** delete the 3 existing Alembic versions and generate a new **baseline** migration from the new models.
 - Every schema change after that is a new Alembic revision, and migrations run automatically on deploy (§1.2).
+- **On Vercel** (§1.4) nothing runs them on deploy. Run them by hand against the production database's direct (unpooled) URL, before deploying code that needs them: `DATABASE_URL=<DATABASE_URL_UNPOOLED> alembic upgrade head`.
 - **Seed data:**
   - Holidays come from the `holidays_seed` job.
   - The default categories and the Cash account are created per household at signup (schemas §4.1). There is no global seed for them.

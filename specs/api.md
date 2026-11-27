@@ -532,3 +532,11 @@ The stored rows and projected occurrences of the range in one paginated list (§
 - Transfer: `id`, `date`, `description`, `source` and `target` (`{ kind, account_id, investment_id, label }`), `amount_sent`, `currency_sent`, `amount_received`, `currency_received`, `created_at`.
 - 422 on `amount` when it exceeds an investment source's amount, on `date` in the future, on `target` equal to `source`.
 - There is no edit: delete the transfer and make it again.
+
+## 17. Cron
+
+| Method & path | Headers | Returns |
+|---|---|---|
+| `GET /cron/daily` | `Authorization: Bearer <CRON_SECRET>` | `{ jobs: { <name>: counts or null }, failed: [names] }`. 500 when any job failed, 401 with a wrong or missing secret, 404 when `CRON_SECRET` isn't set. |
+
+- Only for Vercel Cron (operations.md §2.4). It is left out of the OpenAPI document.
