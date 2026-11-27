@@ -10,6 +10,7 @@ from app.models.investment import Investment
 from app.models.recurrence import Recurrence
 from app.models.reference import Account, Card, Category
 from app.models.system import ExchangeRate, Holiday
+from app.models.transfer import Transfer
 
 __all__ = [
     "Account",
@@ -26,5 +27,6 @@ __all__ = [
     "RateLimitHit",
     "Recurrence",
     "Session",
+    "Transfer",
     "User",
 ]

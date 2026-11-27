@@ -14,7 +14,8 @@ from app.domain.enums import Currency, Liquidity
 class Investment(UUIDPk, Timestamps, Base):
     __tablename__ = "investments"
     __table_args__ = (
-        CheckConstraint("amount > 0", name="amount_positive"),
+        # 0 once fully redeemed by transfers (§21); a new investment still needs more than 0.
+        CheckConstraint("amount >= 0", name="amount_positive"),
         CheckConstraint(
             "(liquidity = 'DAILY' AND maturity_date IS NULL)"
             " OR (liquidity = 'MATURITY' AND maturity_date IS NOT NULL AND maturity_date > invested_on)",

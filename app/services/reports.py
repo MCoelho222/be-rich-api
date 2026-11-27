@@ -31,6 +31,7 @@ from app.services.calendar import load_holidays
 from app.services.fx import historical_rate, latest_rate
 from app.services.fx_provider import RateProvider
 from app.services.investments import InvestmentBook
+from app.services.transfers import account_transfers
 from app.services.recurrences import OccurrenceCalculator, registered_rows, rule_of
 
 MAX_RANGE_DAYS = 1096  # 3 years
@@ -291,6 +292,16 @@ class BalanceBook:
                 value = conv.convert(amount, currency, day, to=by_id[acc_id].currency)
                 if value is not None:
                     self.stored[acc_id].append(Movement(entry_type, day, value))
+
+        # Transfers move balances like payments, under the same opening-date rule (§21).
+        for acc_id, currency, day, signed in account_transfers(db, list(by_id), until):
+            account = by_id.get(acc_id)  # the other end may be outside an account filter
+            if account is None or day <= account.opening_balance_date:
+                continue
+            value = conv.convert(abs(signed), currency, day, to=account.currency)
+            if value is not None:
+                kind = EntryType.INCOME if signed > 0 else EntryType.EXPENSE
+                self.stored[acc_id].append(Movement(kind, day, value))
 
         if until > today:
             for line in projected_lines(db, household_id, today, until, today, Filters(account_id=account_id)):
