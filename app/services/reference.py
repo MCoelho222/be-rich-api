@@ -9,13 +9,13 @@ from datetime import date
 from decimal import Decimal
 from typing import TypeVar
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.errors import ApiError, validation_error
 from app.domain.enums import AccountType, CardType, EntryType
-from app.models import Account, Card, Category, Expense, Household, Income, Recurrence, User
+from app.models import Account, Card, Category, Expense, Household, Income, Recurrence, Transfer, User
 from app.schemas.common import blank_to_none
 from app.services.recurrences import follow_card_due_day
 from app.schemas.reference import (
@@ -158,6 +158,7 @@ def account_usage(db: Session, account: Account) -> dict[str, int]:
         "incomes": _count(db, Income, Income.account_id == account.id),
         "recurrences": _count(db, Recurrence, Recurrence.account_id == account.id),
         "cards": _count(db, Card, Card.account_id == account.id),
+        "transfers": _count(db, Transfer, or_(Transfer.from_account_id == account.id, Transfer.to_account_id == account.id)),
     }
 
 

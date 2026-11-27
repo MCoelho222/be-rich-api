@@ -96,7 +96,7 @@ class TestAccounts:
         assert response.status_code == 409
         error = response.json()["error"]
         assert error["code"] == "IN_USE"
-        assert error["usage"] == {"expenses": 0, "incomes": 0, "recurrences": 0, "cards": 1}
+        assert error["usage"] == {"expenses": 0, "incomes": 0, "recurrences": 0, "cards": 1, "transfers": 0}
 
     def test_delete_unused(self, client, owner):
         account = new_bank(client)

@@ -26,11 +26,14 @@ def list_investments(db: Session, household_id: uuid.UUID) -> list[Investment]:
     )
 
 
-def _validate(investment: Investment) -> None:
-    """Rules checked on the final values, so create and patch share them."""
+def _validate(investment: Investment, creating: bool = False) -> None:
+    """Rules checked on the final values, so create and patch share them. Transfers can
+    redeem an investment down to 0 (§21), so only a new one must hold more than 0."""
     errors: dict[str, list[str]] = {}
-    if investment.amount <= 0:
+    if creating and investment.amount <= 0:
         errors["amount"] = ["Must be greater than zero"]
+    elif investment.amount < 0:
+        errors["amount"] = ["Can't be negative"]
     if investment.liquidity is Liquidity.MATURITY:
         if investment.maturity_date is None:
             errors["maturity_date"] = ["Required when liquidity is MATURITY"]
@@ -54,7 +57,7 @@ def create_investment(db: Session, household: Household, body: InvestmentCreate,
         maturity_date=body.maturity_date,
         include_in_balance=body.include_in_balance,
     )
-    _validate(investment)
+    _validate(investment, creating=True)
     db.add(investment)
     db.flush()
     return investment

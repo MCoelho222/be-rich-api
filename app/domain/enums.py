@@ -30,6 +30,13 @@ class AccountType(StrEnum):
     CASH = "CASH"
 
 
+class TransferEnd(StrEnum):
+    """What a transfer moves money from or to (schemas §21)."""
+
+    ACCOUNT = "ACCOUNT"
+    INVESTMENT = "INVESTMENT"
+
+
 class Liquidity(StrEnum):
     """When an investment can be redeemed (schemas §20)."""
 

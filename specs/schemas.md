@@ -592,7 +592,7 @@ Money the household has invested outside its accounts: a CDB, Tesouro Direto, a 
 | `household_id` | uuid → Household | Yes | | |
 | `name` | string(≤40) | No | | A label such as "CDB 110% CDI". |
 | `bank` | string(1–40) | Yes | | Free text: the bank or broker holding it. Not linked to an Account. |
-| `amount` | decimal(12,2) | Yes | | > 0. |
+| `amount` | decimal(12,2) | Yes | | > 0 when created. Transfers (§21) change it and can bring it to 0 (redeemed). |
 | `currency` | Currency | Yes | household's `default_currency` | |
 | `invested_on` | date | Yes | today | |
 | `liquidity` | Liquidity | Yes | | `DAILY`: can be redeemed any day. `MATURITY`: locked until `maturity_date`. |
@@ -605,7 +605,34 @@ Money the household has invested outside its accounts: a CDB, Tesouro Direto, a 
 
 - An investment with `include_in_balance` counts in the total balance (§14.2) on every date `t ≥ invested_on`, at its current `amount` converted to `default_currency` with the latest rate. It keeps counting after `maturity_date`, until the user deletes it.
 - It belongs to no account, so per-account balances and the `account_id` filter leave it out.
-- Creating an investment doesn't move money out of an account. To record that, users add an expense on the account.
+- Creating an investment doesn't move money out of an account. To move money between an account and an investment, users make a transfer (§21).
+
+## 21. Transfer
+
+Money moved between two accounts, or between an account and an investment (either way). It is neither income nor expense: it never enters income, expense or category totals.
+
+| Field | Type | Req. | Default | Constraints / notes |
+|---|---|---|---|---|
+| `id` | uuid | Yes | auto | |
+| `household_id` | uuid → Household | Yes | | |
+| `date` | date | Yes | today | Never in the future. |
+| `description` | string(≤200) | No | | |
+| `from_kind`, `to_kind` | `ACCOUNT` \| `INVESTMENT` | Yes | | |
+| `from_account_id`, `to_account_id` | uuid → Account | Cond. | | Set exactly for an `ACCOUNT` end. |
+| `from_investment_id`, `to_investment_id` | uuid → Investment | No | | Set for an `INVESTMENT` end; cleared if the investment is deleted. |
+| `from_label`, `to_label` | string(≤84) | Cond. | | An `INVESTMENT` end's name (or bank) when the transfer was made. |
+| `amount_sent`, `currency_sent` | decimal(12,2), Currency | Yes | | > 0, in the source's currency. |
+| `amount_received`, `currency_received` | decimal(12,2), Currency | Yes | | > 0, in the target's currency. Equals `amount_sent` when the currencies match. |
+| `created_by_id` | uuid → User | Yes | | |
+| `created_at`, `updated_at` | timestamp | Yes | auto | |
+
+### 21.1 Rules
+
+- The two ends differ. Both belong to the household.
+- An account end moves that account's balance on `date`, like a payment: `−amount_sent` from the source, `+amount_received` to the target. As with rows (§14.1), transfers dated on or before the account's `opening_balance_date` are already part of the opening balance.
+- An investment end changes the investment's `amount` when the transfer is made: `−amount_sent` from the source (never below 0), `+amount_received` to the target. Since this happens right away, `date` can't be in the future.
+- Deleting a transfer undoes it, including on investments that still exist. It is refused (409) when the target investment no longer holds `amount_received`.
+- An account used by a transfer can't be deleted (`IN_USE`). Deleting an investment keeps its transfers, with their label.
 
 ---
 

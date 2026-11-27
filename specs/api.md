@@ -520,3 +520,15 @@ The stored rows and projected occurrences of the range in one paginated list (§
 | `DELETE /investments/{id}` | | 204 |
 
 - `maturity_date` is required for `MATURITY` and rejected for `DAILY` (422). Patching `liquidity` to `DAILY` clears it.
+
+## 16. Transfers
+
+| Method & path | Body / query | Returns |
+|---|---|---|
+| `GET /transfers` | `from`, `to` (dates, inclusive), `account_id`, `investment_id` | `{ items: [Transfer] }`, newest first |
+| `POST /transfers` | `source` and `target` (`{ kind: ACCOUNT \| INVESTMENT, id }`), `amount` (in the source's currency), and optionally `amount_received` (required when the currencies differ), `date` (default: today), `description` | 201 Transfer |
+| `DELETE /transfers/{id}` | | 204, or 409 when it can't be undone (schemas §21.1) |
+
+- Transfer: `id`, `date`, `description`, `source` and `target` (`{ kind, account_id, investment_id, label }`), `amount_sent`, `currency_sent`, `amount_received`, `currency_received`, `created_at`.
+- 422 on `amount` when it exceeds an investment source's amount, on `date` in the future, on `target` equal to `source`.
+- There is no edit: delete the transfer and make it again.
